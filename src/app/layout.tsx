@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "./login.css";
 import "./management.css";
+import "./event-detail.css";
 
 export const metadata: Metadata = {
   title: "Arte-Luta Brasil Competições",
