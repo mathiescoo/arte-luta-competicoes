@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Activity, Award, CalendarDays, ChevronDown, CircleHelp, Clock3, Download, Eye, LayoutDashboard, Menu, MoreHorizontal, Play, Plus, Radio, Settings, Trophy, Users, X } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 const rings = [
   { name: "Roda 1", status: "Aguardando votos", tone: "gold", category: "Adulto Avançado", blue: "Lucas Ferreira", green: "Rafael Costa", votes: 2, time: "00:18" },
@@ -16,6 +18,7 @@ const events = [
 ];
 
 export default function Home() {
+  const router = useRouter();
   const [navOpen, setNavOpen] = useState(false);
   const [modal, setModal] = useState(false);
   const [toast, setToast] = useState("");
@@ -36,24 +39,24 @@ export default function Home() {
         <div className="brand"><div className="brand-mark">AL</div><div><strong>ARTE-LUTA</strong><span>BRASIL COMPETIÇÕES</span></div></div>
         <button className="mobile-close" aria-label="Fechar menu" onClick={() => setNavOpen(false)}><X /></button>
         <nav>
-          <a className="active"><LayoutDashboard /> Visão geral</a>
-          <a><CalendarDays /> Eventos</a>
-          <a><Trophy /> Competições</a>
-          <a><Users /> Participantes</a>
-          <a><Award /> Resultados</a>
+          <Link className="active" href="/painel"><LayoutDashboard /> Visão geral</Link>
+          <Link href="/eventos"><CalendarDays /> Eventos</Link>
+          <Link href="/eventos"><Trophy /> Competições</Link>
+          <Link href="/participantes"><Users /> Participantes</Link>
+          <Link href="/resultados"><Award /> Resultados</Link>
           <div className="nav-label">OPERAÇÃO</div>
-          <a><Activity /> Controle das rodas</a>
-          <a><Radio /> Telões ao vivo</a>
+          <Link href="/rodas"><Activity /> Controle das rodas</Link>
+          <Link href="/telao"><Radio /> Telões ao vivo</Link>
           <div className="nav-label">SISTEMA</div>
-          <a><Settings /> Configurações</a>
-          <a><CircleHelp /> Central de ajuda</a>
+          <Link href="/configuracoes"><Settings /> Configurações</Link>
+          <Link href="/ajuda"><CircleHelp /> Central de ajuda</Link>
         </nav>
         <div className="profile"><div className="avatar">MM</div><div><strong>Matheus Mendes</strong><span>Administrador</span></div><MoreHorizontal /></div>
       </aside>
       {navOpen && <button className="backdrop" aria-label="Fechar menu" onClick={() => setNavOpen(false)} />}
 
       <main>
-        <header><button className="menu-button" aria-label="Abrir menu" onClick={() => setNavOpen(true)}><Menu /></button><div><span className="eyebrow">QUINTA-FEIRA, 18 DE OUTUBRO</span><h1>Olá, Matheus.</h1></div><div className="header-actions"><button className="icon-button" aria-label="Ajuda"><CircleHelp /></button><button className="primary" onClick={() => setModal(true)}><Plus /> Novo evento</button></div></header>
+        <header><button className="menu-button" aria-label="Abrir menu" onClick={() => setNavOpen(true)}><Menu /></button><div><span className="eyebrow">PAINEL ADMINISTRATIVO</span><h1>Olá, Matheus.</h1></div><div className="header-actions"><Link className="icon-button" aria-label="Ajuda" href="/ajuda"><CircleHelp /></Link><Link className="primary" href="/eventos/novo"><Plus /> Novo evento</Link></div></header>
 
         <section className="hero">
           <div><div className="live-pill"><i /> EVENTO EM ANDAMENTO</div><h2>Campeonato e Festival<br />Arte-Luta Brasil 2026</h2><p>Ginásio Municipal · São Paulo, SP</p><div className="hero-buttons"><button onClick={() => notify("Painel de operação aberto.")}><Play /> Abrir controle do evento</button><button className="ghost" onClick={() => notify("Prévia do telão preparada.")}><Eye /> Visualizar telão</button></div></div>
@@ -74,7 +77,7 @@ export default function Home() {
           <div><div className="section-head compact"><div><span className="eyebrow">AGENDA</span><h3>Próximos eventos</h3></div><select value={status} onChange={(e) => setStatus(e.target.value)}><option>Todos os eventos</option><option>Em andamento</option><option>Inscrições abertas</option><option>Rascunho</option></select></div>
             <div className="event-list">{visibleEvents.map((event) => <button key={event.title} onClick={() => notify(`${event.title} selecionado.`)}><div className="date" style={{borderColor:event.color}}><strong>{event.day}</strong><span>{event.month}</span></div><div><strong>{event.title}</strong><span>{event.meta}</span></div><ChevronDown className="event-arrow" /></button>)}</div>
           </div>
-          <aside className="quick"><span className="eyebrow">ATALHOS</span><h3>Ações rápidas</h3><button onClick={() => setModal(true)}><Plus /><div><strong>Criar novo evento</strong><span>Comece por um modelo pronto</span></div></button><button onClick={() => notify("Importador CSV aberto.")}><Download /><div><strong>Importar participantes</strong><span>Use CSV ou respostas de formulário</span></div></button><button onClick={() => notify("Sessão de telão pronta para configuração.")}><Radio /><div><strong>Abrir sessão de telão</strong><span>Gere um link ou código de acesso</span></div></button></aside>
+          <aside className="quick"><span className="eyebrow">ATALHOS</span><h3>Ações rápidas</h3><button onClick={() => router.push("/eventos/novo")}><Plus /><div><strong>Criar novo evento</strong><span>Escolha uma ou mais competições</span></div></button><button onClick={() => router.push("/participantes")}><Download /><div><strong>Importar participantes</strong><span>Use CSV ou respostas de formulário</span></div></button><button onClick={() => router.push("/telao")}><Radio /><div><strong>Abrir sessão de telão</strong><span>Gere um link ou código de acesso</span></div></button></aside>
         </section>
       </main>
 
