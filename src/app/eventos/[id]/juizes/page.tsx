@@ -1,0 +1,6 @@
+import Link from "next/link";
+import { notFound, redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import JudgeManager from "./judge-manager";
+export const dynamic="force-dynamic";
+export default async function JudgesPage({params}:{params:Promise<{id:string}>}){const {id}=await params;const supabase=await createClient();const {data:claims}=await supabase.auth.getClaims();if(!claims?.claims?.sub)redirect("/entrar");const [{data:event},{data:profiles},{data:assignments}]=await Promise.all([supabase.from("events").select("id,name,competitions(id,name,categories(id,name)),rings(id,name)").eq("id",id).maybeSingle(),supabase.from("profiles").select("id,full_name").order("full_name"),supabase.from("judge_assignments").select("id,judge_id,competition_id,category_id,ring_id,active,profiles(full_name),competitions(name),categories(name),rings(name)").eq("event_id",id)]);if(!event)notFound();return <main className="management-page"><Link href={`/eventos/${id}`} className="back-link">← Voltar para configuração do evento</Link><div className="event-detail-head"><div><span className="eyebrow">{event.name}</span><h1>Juízes e designações</h1><p>Cada juiz recebe somente a roda, categoria e competição que poderá avaliar.</p></div></div><JudgeManager event={event} profiles={profiles||[]} initialAssignments={assignments||[]}/></main>}
