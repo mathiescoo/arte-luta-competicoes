@@ -13,17 +13,7 @@ export default function CompleteAuthPage() {
         window.location.replace("/painel");
         return;
       }
-      const code = new URLSearchParams(window.location.search).get("code");
-      if (!code) {
-        setMessage("Não recebemos a confirmação do Google. Volte e tente novamente.");
-        return;
-      }
-      const { error } = await supabase.auth.exchangeCodeForSession(code);
-      if (error) {
-        setMessage(`Não foi possível concluir o acesso: ${error.message}`);
-        return;
-      }
-      window.location.replace("/painel");
+      setMessage("A sessão do Google não foi recebida. Volte e tente novamente.");
     }
     complete();
   }, []);
