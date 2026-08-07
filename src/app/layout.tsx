@@ -8,6 +8,7 @@ import "./participants.css";
 import "./dashboard.css";
 import "./operations.css";
 import "./judges.css";
+import "./judge-applications.css";
 
 export const metadata: Metadata = {
   title: "Arte-Luta Brasil Competições",
