@@ -1,0 +1,15 @@
+import type { Metadata, Viewport } from "next";
+import "./globals.css";
+import "./login.css";
+
+export const metadata: Metadata = {
+  title: "Arte-Luta Brasil Competições",
+  description: "Gestão completa de campeonatos e festivais de capoeira.",
+  applicationName: "Arte-Luta Competições",
+  manifest: "/manifest.webmanifest",
+};
+export const viewport: Viewport = { themeColor: "#171813", width: "device-width", initialScale: 1 };
+
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  return <html lang="pt-BR"><body>{children}</body></html>;
+}

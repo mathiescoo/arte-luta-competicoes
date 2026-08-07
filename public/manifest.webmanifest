@@ -1,0 +1,10 @@
+{
+  "name": "Arte-Luta Brasil Competições",
+  "short_name": "Arte-Luta",
+  "description": "Gestão de campeonatos e festivais de capoeira",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f2eb",
+  "theme_color": "#171813",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
