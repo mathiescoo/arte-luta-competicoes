@@ -16,6 +16,7 @@ import "./vote-monitor.css";
 import "./public-display.css";
 import "./checkin.css";
 import "./event-settings.css";
+import "./settings-help.css";
 
 export const metadata: Metadata = {
   title: "Arte-Luta Brasil Competições",
