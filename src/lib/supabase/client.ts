@@ -9,20 +9,12 @@ function publicValue(value: string | undefined) {
   return (value ?? "").replace(/[\s\r\n]+/g, "").replace(/^['\"]|['\"]$/g, "");
 }
 
-function isProjectAnonKey(value: string) {
-  try {
-    const payload = JSON.parse(atob(value.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
-    return payload.ref === "chgwkxejisnvlsspwbmq" && payload.role === "anon";
-  } catch {
-    return false;
-  }
-}
-
 export function createClient() {
   const configuredUrl = publicValue(process.env.NEXT_PUBLIC_SUPABASE_URL).replace(/\/+$/, "");
-  const configuredAnonKey = publicValue(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
   const supabaseUrl = configuredUrl === PROJECT_URL ? configuredUrl : PROJECT_URL;
-  const supabaseAnonKey = isProjectAnonKey(configuredAnonKey) ? configuredAnonKey : PROJECT_ANON_KEY;
+  // A configuração da Vercel recebeu uma chave JWT de assinatura inválida.
+  // Usa a chave anon verificada até essa variável ser corrigida no painel.
+  const supabaseAnonKey = PROJECT_ANON_KEY;
 
   return createBrowserClient(
     supabaseUrl,
