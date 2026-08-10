@@ -27,6 +27,6 @@ export async function GET(request: NextRequest) {
   );
 
   const { error } = await supabase.auth.exchangeCodeForSession(code);
-  if (error) return NextResponse.redirect(`${targetOrigin}/entrar?erro=oauth`);
+  if (error) return NextResponse.redirect(`${targetOrigin}/auth/complete?code=${encodeURIComponent(code)}&next=${encodeURIComponent(next)}`);
   return response;
 }
