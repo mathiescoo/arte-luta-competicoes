@@ -12,8 +12,8 @@ Plataforma responsiva para organizar campeonatos, festivais e competições da C
 ## Configurar o Supabase
 
 1. Crie um projeto gratuito e abra **SQL Editor**.
-2. Execute `supabase/migrations/001_initial.sql`.
-3. Em Authentication, habilite e-mail/senha e desative cadastro público se apenas administradores puderem convidar usuários.
+2. Execute, em ordem numérica, todos os arquivos de `supabase/migrations/001_initial.sql` até `016_organizer_event_access.sql`. A Vercel publica o código, mas não executa migrations no banco.
+3. Em Authentication, habilite o provedor Google e mantenha as URLs de retorno da aplicação cadastradas.
 4. Copie URL e chave `anon` para `.env.local`. A `service role` nunca deve usar prefixo `NEXT_PUBLIC_` nem ir ao navegador.
 5. Crie o primeiro usuário em Authentication > Users. Depois insira `profiles`, `organizations` e `user_roles` com papel `admin` pelo SQL Editor.
 
