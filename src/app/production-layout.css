@@ -1,0 +1,114 @@
+/* Proteções de produção para conteúdo longo, monitores e telas menores. */
+.login-content { width: min(410px, 100%); }
+.login-content > p { font-size: 13px; color: #77786f; margin: 0 0 28px; line-height: 1.55; }
+
+/* Páginas sem a barra lateral não podem herdar o deslocamento global do painel. */
+.judge-page,
+.public-display { margin-left: 0; max-width: none; width: 100%; }
+
+.judge-header { height: auto; min-width: 0; gap: 16px; flex-wrap: wrap; }
+.judge-header-actions { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.judge-header-actions .secondary { display: inline-flex; align-items: center; gap: 7px; text-decoration: none; color: var(--ink); }
+.public-display { padding-bottom: 100px; }
+
+/* Nomes, e-mails e títulos reais nunca devem estourar um cartão. */
+.management-page,
+.wizard-heading,
+.management-top > div,
+.event-detail-head > div,
+.match-heading > div,
+.vote-monitor-head > div { min-width: 0; }
+
+.management-page h1,
+.wizard-heading h1,
+.event-detail-head h1,
+.category-toolbar h2,
+.match-heading h2,
+.management-row strong,
+.judge-list strong,
+.category-table strong,
+.results-list strong,
+.match-list strong,
+.checkin-list strong,
+.vote-monitor-list strong,
+.display-list strong { overflow-wrap: anywhere; word-break: break-word; }
+
+.form-grid input,
+.form-grid select,
+.form-grid textarea { min-width: 0; max-width: 100%; }
+
+.management-top,
+.event-detail-head,
+.category-toolbar,
+.match-heading,
+.judge-actions,
+.results-head,
+.vote-monitor-head,
+.match-filters,
+.operation-actions,
+.modal-actions,
+.wizard-actions { gap: 12px; flex-wrap: wrap; }
+
+.management-row { grid-template-columns: 48px minmax(0, 1fr) auto 20px; }
+.category-table article { grid-template-columns: 40px minmax(0, 1fr) auto 35px; }
+.match-list article { grid-template-columns: 130px minmax(0, 1fr) auto; }
+
+.display-list article { min-width: 0; flex-wrap: wrap; }
+.display-list article > div { min-width: 0; flex: 1; }
+.display-list article > a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.modal-wrap { padding: 14px; }
+.modal { max-height: calc(100dvh - 28px); overflow: auto; }
+.display-match > p { display: inline-flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
+.display-match > p svg { width: 18px; }
+
+/* O cartão de evento é um Link, não um button. */
+.event-list a > div:nth-child(2) { flex: 1; min-width: 0; }
+.event-list a > div:nth-child(2) strong,
+.event-list a > div:nth-child(2) span { display: block; overflow-wrap: anywhere; }
+
+/* A barra lateral recolhe antes de comprimir os cards e cabeçalhos. */
+@media (max-width: 960px) and (min-width: 761px) {
+  .sidebar { transform: translateX(-100%); transition: .25s; }
+  .sidebar.open { transform: none; }
+  .mobile-close { display: block; position: absolute; right: 12px; top: 12px; background: none; color: white; border: 0; }
+  .mobile-close svg { width: 20px; }
+  .app-shell > main { margin-left: 0; padding: 0 28px 50px; }
+  .app-shell > main > header { height: 96px; }
+  .menu-button { display: grid; place-items: center; border: 0; background: none; padding: 8px; margin-right: 3px; }
+  .menu-button svg { width: 22px; }
+  .app-shell > main > header > div:nth-child(2) { margin-right: auto; }
+  .hero-stat { display: none; }
+  .ring-grid,
+  .lower-grid { grid-template-columns: 1fr; }
+  .quick { margin-top: 0; }
+}
+
+@media (max-width: 900px) {
+  .participant-tools,
+  .checkin-tools,
+  .result-controls { flex-wrap: wrap; }
+  .participant-tools > label,
+  .checkin-tools .search { min-width: min(100%, 260px); }
+  .results-list article,
+  .checkin-list article { min-width: 0; }
+}
+
+@media (max-width: 760px) {
+  .management-row { grid-template-columns: 42px minmax(0, 1fr) 16px; }
+  .category-table article { grid-template-columns: 35px minmax(0, 1fr) 30px; }
+  .match-list article { grid-template-columns: 1fr; }
+  .display-list article > a { order: 3; }
+}

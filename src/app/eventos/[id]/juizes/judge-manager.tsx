@@ -1,14 +1,59 @@
 "use client";
+
 import { FormEvent, useMemo, useState } from "react";
 import { Plus, UserRound, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-type Event={id:string;name:string;competitions:Array<{id:string;name:string;categories:Array<{id:string;name:string}>}>;rings:Array<{id:string;name:string}>};
-type Profile={id:string;full_name:string};
-type Assignment={id:string;judge_id:string;competition_id:string;category_id:string|null;ring_id:string|null;active:boolean;profiles:{full_name:string}[];competitions:{name:string}[];categories:{name:string}[];rings:{name:string}[]};
-export default function JudgeManager({event,profiles,initialAssignments}:{event:Event;profiles:Profile[];initialAssignments:Assignment[]}){
-  const [assignments,setAssignments]=useState(initialAssignments);const [open,setOpen]=useState(false);const [competitionId,setCompetitionId]=useState(event.competitions[0]?.id||"");const [error,setError]=useState("");const [loading,setLoading]=useState(false);
-  const categories=useMemo(()=>event.competitions.find((item)=>item.id===competitionId)?.categories||[],[competitionId,event.competitions]);
-  async function submit(formEvent:FormEvent<HTMLFormElement>){formEvent.preventDefault();setLoading(true);setError("");const form=new FormData(formEvent.currentTarget);const judgeId=String(form.get("judge_id")||"");const ringId=String(form.get("ring_id")||"")||null;const categoryId=String(form.get("category_id")||"")||null;if(!judgeId||!competitionId){setError("Selecione o juiz e a competição.");setLoading(false);return;}const supabase=createClient();const {error:eventUserError}=await supabase.from("event_users").upsert({event_id:event.id,user_id:judgeId,role:"judge"},{onConflict:"event_id,user_id,role"});if(eventUserError){setError(eventUserError.message);setLoading(false);return;}const {data,error:assignmentError}=await supabase.from("judge_assignments").insert({event_id:event.id,competition_id:competitionId,category_id:categoryId,ring_id:ringId,judge_id:judgeId,active:true}).select("id,judge_id,competition_id,category_id,ring_id,active,profiles(full_name),competitions(name),categories(name),rings(name)").single();if(assignmentError||!data){setError(assignmentError?.message||"Não foi possível criar a designação.");setLoading(false);return;}setAssignments((items)=>[...items,data as Assignment]);setOpen(false);setLoading(false)}
-  async function deactivate(id:string){const {error}=await createClient().from("judge_assignments").update({active:false}).eq("id",id);if(!error)setAssignments((items)=>items.map((item)=>item.id===id?{...item,active:false}:item))}
-  return <section className="judge-workspace"><div className="judge-actions"><span>{assignments.filter((item)=>item.active).length} designação(ões) ativa(s)</span><button className="primary" onClick={()=>setOpen(true)} disabled={!profiles.length}><Plus/>Designar juiz</button></div>{profiles.length?assignments.length?<div className="judge-list">{assignments.map((assignment)=><article key={assignment.id}><span className="person-dot"><UserRound/></span><div><strong>{assignment.profiles?.[0]?.full_name||"Juiz"}</strong><span>{assignment.competitions?.[0]?.name||"Competição"} · {assignment.categories?.[0]?.name||"Todas as categorias"} · {assignment.rings?.[0]?.name||"Sem roda"}</span></div><b>{assignment.active?"Ativo":"Inativo"}</b>{assignment.active&&<button onClick={()=>deactivate(assignment.id)}>Desativar</button>}</article>)}</div>:<div className="empty-state compact"><UserRound/><h2>Nenhum juiz designado</h2><p>Crie uma designação para liberar o painel individual do juiz.</p></div>:<div className="empty-state compact"><UserRound/><h2>Nenhum usuário disponível</h2><p>Crie as contas dos juízes em Authentication → Users no Supabase. Elas aparecerão aqui automaticamente.</p></div>}{open&&<div className="modal-wrap"><button className="backdrop" onClick={()=>setOpen(false)} aria-label="Fechar"/><form className="modal category-modal" onSubmit={submit}><button type="button" className="modal-x" onClick={()=>setOpen(false)}><X/></button><span className="eyebrow">{event.name}</span><h2>Designar juiz</h2><div className="form-grid"><label className="wide">Juiz<select name="judge_id" required><option value="">Selecione...</option>{profiles.map((profile)=><option value={profile.id} key={profile.id}>{profile.full_name}</option>)}</select></label><label className="wide">Competição<select value={competitionId} onChange={(e)=>setCompetitionId(e.target.value)}>{event.competitions.map((competition)=><option value={competition.id} key={competition.id}>{competition.name}</option>)}</select></label><label>Categoria<select name="category_id"><option value="">Todas as categorias</option>{categories.map((category)=><option value={category.id} key={category.id}>{category.name}</option>)}</select></label><label>Roda<select name="ring_id"><option value="">Sem roda definida</option>{event.rings.map((ring)=><option value={ring.id} key={ring.id}>{ring.name}</option>)}</select></label></div>{error&&<div className="form-error">{error}</div>}<div className="modal-actions"><button type="button" className="secondary" onClick={()=>setOpen(false)}>Cancelar</button><button className="primary" disabled={loading}>{loading?"Salvando...":"Salvar designação"}</button></div></form></div>}</section>
+
+type Event = { id: string; name: string; competitions: Array<{ id: string; name: string; model: "digital_flags" | "sum_score"; categories: Array<{ id: string; name: string }> }>; rings: Array<{ id: string; name: string }> };
+type Profile = { id: string; full_name: string };
+type Assignment = { id: string; judge_id: string; competition_id: string; category_id: string | null; ring_id: string | null; active: boolean; profiles: { full_name: string }[]; competitions: { name: string }[]; categories: { name: string }[]; rings: { name: string }[] };
+
+export default function JudgeManager({ event, profiles, initialAssignments }: { event: Event; profiles: Profile[]; initialAssignments: Assignment[] }) {
+  const [assignments, setAssignments] = useState(initialAssignments);
+  const [open, setOpen] = useState(false);
+  const [competitionId, setCompetitionId] = useState(event.competitions[0]?.id || "");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const competition = event.competitions.find((item) => item.id === competitionId);
+  const categories = useMemo(() => competition?.categories || [], [competition]);
+  const needsRing = competition?.model === "digital_flags";
+
+  async function submit(formEvent: FormEvent<HTMLFormElement>) {
+    formEvent.preventDefault();
+    setLoading(true);
+    setError("");
+    const form = new FormData(formEvent.currentTarget);
+    const judgeId = String(form.get("judge_id") || "");
+    const ringId = String(form.get("ring_id") || "") || null;
+    const categoryId = String(form.get("category_id") || "") || null;
+    if (!judgeId || !competitionId || !categoryId || (needsRing && !ringId)) {
+      setError(needsRing ? "Selecione o juiz, a categoria e a roda para julgamento por bandeiras." : "Selecione o juiz e a categoria.");
+      setLoading(false);
+      return;
+    }
+
+    const supabase = createClient();
+    const { error: eventUserError } = await supabase.from("event_users").upsert({ event_id: event.id, user_id: judgeId, role: "judge" }, { onConflict: "event_id,user_id,role" });
+    if (eventUserError) {
+      setError(eventUserError.message);
+      setLoading(false);
+      return;
+    }
+    const { data, error: assignmentError } = await supabase.from("judge_assignments").insert({ event_id: event.id, competition_id: competitionId, category_id: categoryId, ring_id: ringId, judge_id: judgeId, active: true }).select("id,judge_id,competition_id,category_id,ring_id,active,profiles(full_name),competitions(name),categories(name),rings(name)").single();
+    if (assignmentError || !data) {
+      setError(assignmentError?.message || "Não foi possível criar a designação.");
+      setLoading(false);
+      return;
+    }
+    setAssignments((items) => [...items, data as Assignment]);
+    setOpen(false);
+    setLoading(false);
+  }
+
+  async function deactivate(id: string) {
+    const { error: updateError } = await createClient().from("judge_assignments").update({ active: false }).eq("id", id);
+    if (!updateError) setAssignments((items) => items.map((item) => item.id === id ? { ...item, active: false } : item));
+  }
+
+  return <section className="judge-workspace"><div className="judge-actions"><span>{assignments.filter((item) => item.active).length} designação(ões) ativa(s)</span><button className="primary" onClick={() => setOpen(true)} disabled={!profiles.length}><Plus />Designar juiz</button></div>{profiles.length ? assignments.length ? <div className="judge-list">{assignments.map((assignment) => <article key={assignment.id}><span className="person-dot"><UserRound /></span><div><strong>{assignment.profiles?.[0]?.full_name || "Juiz"}</strong><span>{assignment.competitions?.[0]?.name || "Competição"} · {assignment.categories?.[0]?.name || "Categoria"} · {assignment.rings?.[0]?.name || "Sem roda"}</span></div><b>{assignment.active ? "Ativo" : "Inativo"}</b>{assignment.active && <button onClick={() => deactivate(assignment.id)}>Desativar</button>}</article>)}</div> : <div className="empty-state compact"><UserRound /><h2>Nenhum juiz designado</h2><p>Crie uma designação para liberar o painel individual do juiz.</p></div> : <div className="empty-state compact"><UserRound /><h2>Nenhum juiz aprovado</h2><p>Libere as solicitações em “Liberação de juízes” antes de designar alguém ao evento.</p></div>}{open && <div className="modal-wrap"><button className="backdrop" onClick={() => setOpen(false)} aria-label="Fechar" /><form className="modal category-modal" onSubmit={submit}><button type="button" className="modal-x" onClick={() => setOpen(false)}><X /></button><span className="eyebrow">{event.name}</span><h2>Designar juiz</h2><div className="form-grid"><label className="wide">Juiz<select name="judge_id" required><option value="">Selecione...</option>{profiles.map((profile) => <option value={profile.id} key={profile.id}>{profile.full_name}</option>)}</select></label><label className="wide">Competição<select value={competitionId} onChange={(eventChange) => setCompetitionId(eventChange.target.value)}>{event.competitions.map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}</select></label><label>Categoria<select name="category_id" required><option value="">Selecione...</option>{categories.map((category) => <option value={category.id} key={category.id}>{category.name}</option>)}</select></label>{needsRing && <label>Roda<select name="ring_id" required><option value="">Selecione...</option>{event.rings.map((ring) => <option value={ring.id} key={ring.id}>{ring.name}</option>)}</select></label>}</div>{error && <div className="form-error">{error}</div>}<div className="modal-actions"><button type="button" className="secondary" onClick={() => setOpen(false)}>Cancelar</button><button className="primary" disabled={loading}>{loading ? "Salvando..." : "Salvar designação"}</button></div></form></div>}</section>;
 }

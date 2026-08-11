@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Activity,
   Award,
@@ -14,6 +15,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  Music2,
   MoreHorizontal,
   Plus,
   Radio,
@@ -83,13 +85,9 @@ export default function Dashboard({ name, role, events }: { name: string; role: 
   return (
     <div className="app-shell">
       <aside className={`sidebar ${navOpen ? "open" : ""}`}>
-        <div className="brand">
-          <div className="brand-mark">AL</div>
-          <div>
-            <strong>ARTE-LUTA</strong>
-            <span>BRASIL COMPETIÇÕES</span>
-          </div>
-        </div>
+        <Link className="brand brand-logo-link" href="/painel" aria-label="Capoeira Arte-Luta Brasil">
+          <Image className="brand-logo-image" src="/brand/capoeira-arte-luta-brasil.png" alt="Capoeira Arte-Luta Brasil" width={1536} height={1024} priority />
+        </Link>
         <button className="mobile-close" aria-label="Fechar menu" onClick={() => setNavOpen(false)}>
           <X />
         </button>
@@ -103,6 +101,7 @@ export default function Dashboard({ name, role, events }: { name: string; role: 
           <Link href="/resultados"><Award />Resultados</Link>
           <div className="nav-label">OPERAÇÃO</div>
           <Link href="/rodas"><Activity />Controle das rodas</Link>
+          <Link href="/pontuacao"><Music2 />Avaliações Cante Comigo</Link>
           <Link href="/telao"><Radio />Telões ao vivo</Link>
           <div className="nav-label">SISTEMA</div>
           <Link href="/usuarios"><UserCog />Usuários e acessos</Link>

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ArrowRight, LockKeyhole } from "lucide-react";
@@ -35,8 +36,8 @@ function Login() {
   return (
     <main className="login-page">
       <section className="login-brand">
-        <div className="brand-mark">AL</div>
-        <span>ARTE-LUTA BRASIL</span>
+        <Image className="login-brand-logo" src="/brand/capoeira-arte-luta-brasil.png" alt="Capoeira Arte-Luta Brasil" width={1536} height={1024} priority />
+        <span>GESTÃO DE CAMPEONATOS</span>
         <h1>Competições que<br />mantêm a roda viva.</h1>
         <p>Gestão segura de eventos, avaliações e resultados em tempo real.</p>
       </section>

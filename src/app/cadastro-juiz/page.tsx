@@ -1,6 +1,47 @@
 "use client";
+
+import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { ClipboardCheck, UserRound } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-export default function JudgeSignupPage(){const [error,setError]=useState("");const [loading,setLoading]=useState(false);async function request(){setLoading(true);setError("");const {error:oauthError}=await createClient().auth.signInWithOAuth({provider:"google",options:{redirectTo:`${window.location.origin}/auth/complete?next=/solicitar-juiz`}});if(oauthError){setError(oauthError.message);setLoading(false)}}return <main className="login-page"><section className="login-brand"><div className="brand-mark">AL</div><span>ARTE-LUTA BRASIL</span><h1>Cadastro de<br/>juiz.</h1><p>Sua conta será liberada pela organização antes de receber acesso às avaliações.</p></section><section className="login-panel"><div className="login-icon"><UserRound/></div><span className="eyebrow">SOLICITAÇÃO DE ACESSO</span><h2>Quero ser juiz</h2><p>Entre com Google para enviar sua solicitação.</p><button className="google-button" onClick={request} disabled={loading}><span>G</span>{loading?"Abrindo Google...":"Solicitar com Google"}<ClipboardCheck/></button>{error&&<div className="login-error">{error}</div>}<Link className="forgot-button" href="/entrar">Já tenho uma conta</Link></section></main>}
+
+export default function JudgeSignupPage() {
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function request() {
+    setLoading(true);
+    setError("");
+    const { error: oauthError } = await createClient().auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/auth/complete?next=/solicitar-juiz` },
+    });
+    if (oauthError) {
+      setError(oauthError.message);
+      setLoading(false);
+    }
+  }
+
+  return (
+    <main className="login-page">
+      <section className="login-brand">
+        <Image className="login-brand-logo" src="/brand/capoeira-arte-luta-brasil.png" alt="Capoeira Arte-Luta Brasil" width={1536} height={1024} priority />
+        <span>GESTÃO DE CAMPEONATOS</span>
+        <h1>Cadastro de<br />juiz.</h1>
+        <p>Sua conta será liberada pela organização antes de receber acesso às avaliações.</p>
+      </section>
+      <section className="login-panel">
+        <div className="login-content">
+          <div className="login-icon"><UserRound /></div>
+          <span className="eyebrow">SOLICITAÇÃO DE ACESSO</span>
+          <h2>Quero ser juiz</h2>
+          <p>Entre com Google para enviar sua solicitação.</p>
+          <button className="google-button" onClick={request} disabled={loading}><span>G</span>{loading ? "Abrindo Google..." : "Solicitar com Google"}<ClipboardCheck /></button>
+          {error && <div className="login-error">{error}</div>}
+          <Link className="forgot-button" href="/entrar">Já tenho uma conta</Link>
+        </div>
+      </section>
+    </main>
+  );
+}
