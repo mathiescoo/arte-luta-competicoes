@@ -31,6 +31,10 @@ export const metadata: Metadata = {
   description: "Gestão profissional de campeonatos, avaliações e resultados.",
   applicationName: "Arena Arte Luta",
   manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [{ url: "/brand/capoeira-app-icon.png", type: "image/png", sizes: "512x512" }],
+    apple: [{ url: "/brand/capoeira-app-icon.png", type: "image/png", sizes: "512x512" }],
+  },
 };
 export const viewport: Viewport = { themeColor: "#171813", width: "device-width", initialScale: 1 };
 
