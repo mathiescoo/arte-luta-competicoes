@@ -1,5 +1,5 @@
-const CACHE = "arena-arte-luta-v4";
-const APP_SHELL = ["/", "/manifest.webmanifest", "/brand/capoeira-app-icon-v2.png"];
+const CACHE = "arena-arte-luta-v5";
+const APP_SHELL = ["/", "/manifest.webmanifest", "/brand/capoeira-app-icon-v2.png", "/brand/capoeira-app-icon-maskable-v3.png"];
 
 self.addEventListener("install", (event) => event.waitUntil(
   caches.open(CACHE)

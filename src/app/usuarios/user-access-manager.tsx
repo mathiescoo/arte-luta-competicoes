@@ -79,31 +79,45 @@ export default function UserAccessManager({ organizationId, currentUserId, initi
       {error && <div className="form-error"><AlertTriangle />{error}</div>}
 
       <div className="users-list">
-        {users.map((user) => (
-          <article className="user-access-card" key={user.id}>
-            <div className="user-access-heading">
-              <span className="user-avatar">{user.name.split(" ").slice(0, 2).map((part) => part[0]).join("").toUpperCase()}</span>
-              <div><strong>{user.name}{user.id === currentUserId && " (você)"}</strong><span>{user.email || "E-mail não compartilhado por esta conta"}</span>{user.phone && <small>{user.phone}</small>}</div>
-            </div>
-            <div className="role-toggles">
-              {roles.map((role) => {
-                const enabled = user.roles.includes(role);
-                const disabled = working.length > 0 || (!enabled && false) || (enabled && role === "admin" && (user.id === currentUserId || adminCount <= 1));
-                return (
-                  <label className={`role-toggle ${enabled ? "enabled" : ""}`} key={role}>
-                    <input
-                      type="checkbox"
-                      checked={enabled}
-                      disabled={disabled}
-                      onChange={(event) => void updateAccess(user, role, event.target.checked)}
-                    />
-                    <span><b>{roleLabels[role].label}</b><small>{roleLabels[role].description}</small></span>
-                  </label>
-                );
-              })}
-            </div>
-          </article>
-        ))}
+        {users.map((user) => {
+          const initials = user.name
+            .split(" ")
+            .slice(0, 2)
+            .map((part) => part[0])
+            .join("")
+            .toUpperCase();
+          const email = user.email || "E-mail não compartilhado por esta conta";
+
+          return (
+            <article className="user-access-card" key={user.id}>
+              <div className="user-access-heading">
+                <span className="user-avatar" aria-hidden="true">{initials}</span>
+                <div className="user-access-identity">
+                  <strong className="user-access-name">{user.name}{user.id === currentUserId && " (você)"}</strong>
+                  <span className="user-access-email" title={email}>{email}</span>
+                  {user.phone && <small className="user-access-phone">{user.phone}</small>}
+                </div>
+              </div>
+              <div className="role-toggles">
+                {roles.map((role) => {
+                  const enabled = user.roles.includes(role);
+                  const disabled = working.length > 0 || (!enabled && false) || (enabled && role === "admin" && (user.id === currentUserId || adminCount <= 1));
+                  return (
+                    <label className={`role-toggle ${enabled ? "enabled" : ""}`} key={role}>
+                      <input
+                        type="checkbox"
+                        checked={enabled}
+                        disabled={disabled}
+                        onChange={(event) => void updateAccess(user, role, event.target.checked)}
+                      />
+                      <span><b>{roleLabels[role].label}</b><small>{roleLabels[role].description}</small></span>
+                    </label>
+                  );
+                })}
+              </div>
+            </article>
+          );
+        })}
       </div>
       {!users.length && <div className="empty-state compact"><UserCog /><h2>Nenhum usuário vinculado</h2><p>Quando alguém for liberado como juiz ou organizador, aparecerá aqui.</p></div>}
     </section>

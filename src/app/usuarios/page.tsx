@@ -56,7 +56,7 @@ export default async function UsersPage() {
   }
 
   return (
-    <main className="management-page">
+    <main className="management-page users-management-page">
       <Link href="/painel" className="back-link">← Voltar para visão geral</Link>
       <div className="management-top">
         <div>
