@@ -1,0 +1,231 @@
+/*
+ * Sistema visual da Capoeira Arte-Luta Brasil.
+ * Neutros ocupam a maior parte da interface; as quatro cores da marca têm
+ * funções claras: azul para ação, amarelo para destaque, verde para sucesso
+ * e vermelho apenas para alertas/destruição.
+ */
+:root {
+  --ink: #151814;
+  --ink-raised: #20241f;
+  --paper: #f7f8f5;
+  --surface: #ffffff;
+  --surface-soft: #eef1ec;
+  --line: #d8ddd6;
+  --muted: #667066;
+  --gold: #f2c300;
+  --green: #087a46;
+  --blue: #24458f;
+  --brand-green: #087a46;
+  --brand-yellow: #f2c300;
+  --brand-yellow-ink: #795b00;
+  --brand-blue: #24458f;
+  --brand-red: #c62d39;
+  --success: #087a46;
+  --warning: #795b00;
+  --danger: #b4232d;
+  --info: #24458f;
+}
+
+body {
+  background:
+    radial-gradient(circle at 100% 0, rgba(8, 122, 70, .035), transparent 27rem),
+    var(--paper);
+}
+
+::selection { background: rgba(242, 195, 0, .35); color: var(--ink); }
+
+/* Corrige a regra global antiga: somente o shell do painel tem margem lateral. */
+main { margin-left: 0; max-width: none; padding: 0; }
+header { height: auto; display: block; }
+.app-shell > main { margin-left: 250px; max-width: 1600px; padding: 0 42px 60px; }
+.app-shell > main > header { height: 118px; display: flex; align-items: center; justify-content: space-between; }
+
+/* Assinatura da marca: discreta, consistente e sem poluir cada cartão. */
+.sidebar,
+.login-brand,
+.public-display,
+.hero { isolation: isolate; }
+
+.sidebar {
+  background:
+    radial-gradient(circle at 110% 4%, rgba(8, 122, 70, .27), transparent 12rem),
+    linear-gradient(160deg, #11140f, #1c2119);
+}
+
+.sidebar::before,
+.login-brand::before,
+.hero::before,
+.public-display::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: linear-gradient(90deg, var(--brand-green) 0 35%, var(--brand-yellow) 35% 57%, var(--brand-blue) 57% 82%, var(--brand-red) 82% 100%);
+  z-index: 0;
+}
+
+.sidebar > * { position: relative; z-index: 1; }
+.sidebar nav a:hover { background: rgba(8, 122, 70, .16); color: #ffffff; }
+.sidebar nav a.active {
+  background: rgba(242, 195, 0, .13);
+  box-shadow: inset 3px 0 0 var(--brand-yellow);
+  color: #ffe387;
+}
+.nav-label { color: #9ba39a; }
+.profile { border-top-color: rgba(255, 255, 255, .14); }
+.avatar,
+.user-avatar { background: linear-gradient(135deg, var(--brand-yellow), #ffd95b); color: #342806; }
+.profile-menu-trigger:hover,
+.profile-menu-trigger[aria-expanded="true"] { background: rgba(242, 195, 0, .14); color: #ffe387; }
+
+/* Azul é a ação principal; amarelo é reservado para chamada e estado ativo. */
+.primary { background: var(--brand-blue); box-shadow: 0 5px 14px rgba(36, 69, 143, .16); }
+.primary:hover:not(:disabled) { background: #1c3674; }
+.secondary,
+.icon-button { background: var(--surface); border-color: var(--line); color: var(--ink); }
+.secondary:hover:not(:disabled),
+.icon-button:hover { border-color: rgba(36, 69, 143, .5); background: #f5f7fc; }
+.hero { background: linear-gradient(135deg, #151913, #1f261c); }
+.hero::before { z-index: 1; }
+.hero > div { z-index: 2; }
+.hero-primary { background: var(--brand-yellow) !important; color: #2e2606 !important; }
+.hero-primary:hover { background: #ffd63c !important; }
+.hero-buttons a.ghost:hover { border-color: #93adf1; background: rgba(36, 69, 143, .22); }
+.live-pill,
+.status.gold,
+.display-phase { color: var(--brand-yellow) !important; }
+.status.green { color: var(--brand-green) !important; }
+.status.blue { color: var(--brand-blue) !important; }
+
+.eyebrow { color: var(--brand-blue); }
+.sidebar .nav-label,
+.sidebar .profile span { color: #a8b0a5; }
+.ring-card,
+.event-list,
+.management-row,
+.category-table,
+.participant-table,
+.results-list article,
+.checkin-list article,
+.judge-list,
+.vote-monitor-list article,
+.display-list article,
+.settings-card,
+.help-grid > a,
+.user-access-card { border-color: var(--line); }
+.management-row:hover,
+.event-list a:hover { border-color: rgba(36, 69, 143, .36); background: #f8faff; }
+.row-icon,
+.category-icon,
+.person-dot { background: #e8f1eb; color: var(--brand-green); }
+.quick,
+.users-intro,
+.help-note { background: #edf0e7; }
+.quick a > svg,
+.help-grid svg,
+.help-grid span,
+.users-intro > svg { color: var(--brand-blue); }
+
+.competition-switcher button.active,
+.competition-choices button.selected,
+.role-toggle.enabled { border-color: var(--brand-yellow); background: #fffbed; }
+.choice-check,
+.selected .choice-check { background: var(--brand-yellow); border-color: var(--brand-yellow); color: #392c00; }
+.selection-note { border-left-color: var(--brand-yellow); background: #fffbed; }
+.event-tabs a.active,
+.event-tabs .active { color: var(--brand-blue); border-bottom-color: var(--brand-yellow); }
+
+input:focus,
+select:focus,
+textarea:focus,
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid rgba(36, 69, 143, .24);
+  outline-offset: 2px;
+}
+input:focus,
+select:focus,
+textarea:focus { border-color: var(--brand-blue) !important; }
+.form-error,
+.login-error { background: #fff0ef; color: var(--danger); border: 1px solid #f2c5c1; }
+.login-success { background: #e8f4ec; color: var(--success); border: 1px solid #b9ddc5; }
+.profile-menu .danger,
+.removeCriterion { color: var(--danger); }
+
+/* Login: a logo é a protagonista, e a roda decorativa fica sempre atrás do texto. */
+.login-page { background: var(--ink); }
+.login-brand {
+  background:
+    radial-gradient(circle at 94% 8%, rgba(8, 122, 70, .29), transparent 19rem),
+    radial-gradient(circle at 116% 48%, rgba(36, 69, 143, .19), transparent 23rem),
+    #151812;
+}
+.login-brand::before { z-index: 0; }
+.login-brand::after {
+  z-index: 0;
+  pointer-events: none;
+  opacity: .68;
+  bottom: -390px;
+}
+.login-brand > :is(span, h1, p) { position: relative; z-index: 1; }
+.login-brand-logo { z-index: 2; }
+.login-brand > span { color: #ffe26b; }
+.login-brand p { color: #d0d6cc; max-width: 31rem; }
+.login-panel { background: #f8f9f6; }
+.login-panel h2 { color: var(--ink); }
+.google-button:hover:not(:disabled) { border-color: rgba(36, 69, 143, .42); background: #f8faff; }
+.judge-signup-link,
+.forgot-button { color: var(--brand-blue); }
+
+/* Marca e legibilidade no telão. */
+.public-display { background: linear-gradient(145deg, #12150f, #1a2018); }
+.public-display::before { position: fixed; z-index: 2; }
+.public-display header,
+.public-display .display-match,
+.public-display .display-idle,
+.public-display footer { position: relative; z-index: 1; }
+.display-fighters article { background: #20261e; border: 1px solid rgba(255, 255, 255, .08); }
+.display-fighters article.blue { border-bottom-color: var(--brand-blue); }
+.display-fighters article.green { border-bottom-color: var(--brand-green); }
+.display-winner { background: var(--brand-yellow); color: #342806; }
+
+/* Pequena assinatura de identidade nas páginas sem sidebar. */
+.management-page,
+.judge-page,
+.brand-scoring-page { border-top: 4px solid transparent; border-image: linear-gradient(90deg, var(--brand-green), var(--brand-yellow), var(--brand-blue), var(--brand-red)) 1; }
+.management-page { background: rgba(255, 255, 255, .18); }
+
+@media (max-width: 960px) {
+  .app-shell > main { margin-left: 0; padding: 0 28px 50px; }
+  .app-shell > main > header { height: 96px; }
+  .login-page { grid-template-columns: 1fr; }
+  .login-brand {
+    min-height: 470px;
+    padding: 270px 36px 42px;
+    justify-content: flex-start;
+  }
+  .login-brand-logo { top: 28px; left: 36px; width: min(310px, 52vw); }
+  .login-brand:has(.login-brand-logo) > span { margin-top: 0; }
+  .login-brand h1 { font-size: clamp(38px, 7vw, 54px); margin: 15px 0; }
+  .login-panel { min-height: 0; padding: 48px 30px; }
+  .public-display header { flex-wrap: wrap; }
+  .display-event-title { flex: 1 1 280px; }
+}
+
+@media (max-width: 760px) {
+  .app-shell > main { margin-left: 0; padding: 0 16px 40px; }
+  .app-shell > main > header { height: 92px; }
+  .login-brand { min-height: 380px; padding: 194px 28px 32px; }
+  .login-brand-logo { top: 22px; left: 28px; width: min(230px, 64vw); }
+  .login-brand::after { display: none; }
+  .login-brand h1 { font-size: 36px; }
+  .login-brand p { font-size: 13px; line-height: 1.55; }
+  .login-panel { padding: 38px 22px; }
+  .management-page,
+  .judge-page { border-top-width: 3px; }
+}
+
+@media (max-width: 430px) {
+  .login-brand { min-height: 365px; padding-top: 194px; }
+  .login-brand h1 { font-size: 32px; }
+}

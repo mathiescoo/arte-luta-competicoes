@@ -25,7 +25,7 @@ export default async function ScoringPage() {
   if (!canManage && !canJudge) redirect("/painel");
 
   return (
-    <main className={styles.page}>
+    <main className={`${styles.page} brand-scoring-page`}>
       <Link href="/painel" className={styles.backLink}>← Voltar para visão geral</Link>
       <header className={styles.heading}>
         <div>
