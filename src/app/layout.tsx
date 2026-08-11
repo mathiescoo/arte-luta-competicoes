@@ -23,6 +23,8 @@ import "./account-menu.css";
 import "./brand-theme.css";
 import "./production-layout.css";
 import "./brand-system.css";
+import "./responsive-system.css";
+import "./responsive-experience.css";
 
 export const metadata: Metadata = {
   title: "Arte-Luta Brasil Competições",

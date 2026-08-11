@@ -1,0 +1,202 @@
+/* Camada final de responsividade para a operação em celular e tablet. */
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  overflow-x: clip;
+}
+
+.app-shell > main,
+.management-page,
+.judge-page,
+.public-display,
+.brand-scoring-page,
+.event-detail-head > div,
+.event-summary span,
+.match-athletes strong,
+.fighters strong {
+  min-width: 0;
+}
+
+.event-summary span,
+.match-athletes strong,
+.fighters strong {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1024px) {
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform .25s ease;
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .mobile-close {
+    display: block;
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    border: 0;
+    background: transparent;
+    color: #fff;
+  }
+
+  .mobile-close svg {
+    width: 20px;
+  }
+
+  .app-shell > main {
+    width: 100%;
+    margin-left: 0;
+    padding: 0 28px 50px;
+  }
+
+  .app-shell > main > header {
+    height: 96px;
+  }
+
+  .menu-button {
+    display: grid;
+    place-items: center;
+    margin-right: 3px;
+    padding: 8px;
+    border: 0;
+    background: none;
+  }
+
+  .menu-button svg {
+    width: 22px;
+  }
+
+  .app-shell > main > header > div:nth-child(2) {
+    min-width: 0;
+    margin-right: auto;
+  }
+
+  .hero-stat {
+    display: none;
+  }
+
+  .ring-grid,
+  .lower-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .quick {
+    margin-top: 0;
+  }
+
+  .competition-choices {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .competition-choices > :last-child:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+
+  .event-detail-head,
+  .event-summary {
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+
+  .event-summary span {
+    flex: 1 1 220px;
+  }
+
+  .match-athletes,
+  .fighters {
+    grid-template-columns: minmax(0, 1fr) 22px minmax(0, 1fr);
+  }
+
+  .wizard-actions > * {
+    flex: 1 1 180px;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 760px) {
+  .app-shell > main {
+    padding: 0 16px calc(40px + env(safe-area-inset-bottom));
+  }
+
+  .app-shell > main > header {
+    height: 92px;
+  }
+
+  .management-page > .back-link:first-child,
+  .wizard-page > .back-link:first-child {
+    display: flex;
+    align-items: center;
+    width: max-content;
+    max-width: 100%;
+    min-height: 44px;
+    margin: 0 0 20px;
+    line-height: 1.4;
+  }
+
+  .management-list + .back-link {
+    display: flex;
+    width: max-content;
+    max-width: 100%;
+    margin: 24px 0 0;
+  }
+
+  .management-top {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .management-top p {
+    display: block;
+    font-size: 13px;
+  }
+
+  .management-top > .primary {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .competition-choices {
+    grid-template-columns: 1fr;
+  }
+
+  .competition-choices > :last-child:nth-child(3) {
+    grid-column: auto;
+  }
+
+  .event-detail-head,
+  .event-summary {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .event-summary span {
+    flex: auto;
+    align-items: flex-start;
+    line-height: 1.45;
+  }
+
+  .match-athletes,
+  .fighters {
+    grid-template-columns: minmax(0, 1fr) 18px minmax(0, 1fr);
+  }
+
+  .match-athletes strong,
+  .fighters strong {
+    font-size: 12px;
+  }
+
+  .wizard-actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .wizard-actions > * {
+    width: 100%;
+  }
+}

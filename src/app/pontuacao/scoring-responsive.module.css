@@ -1,0 +1,384 @@
+/* Proteções de layout para a operação Cante Comigo em celular e tablet. */
+.page {
+  min-width: 0;
+  overflow-x: clip;
+}
+
+.backLink {
+  display: flex;
+  align-items: center;
+  width: max-content;
+  max-width: 100%;
+  min-height: 40px;
+  margin: 0 0 28px;
+  line-height: 1.35;
+}
+
+.heading {
+  display: block;
+  min-height: 0;
+  height: auto;
+}
+
+.eyebrow {
+  display: block;
+  margin-bottom: 10px;
+}
+
+.workspace,
+.managerSection,
+.judgeSection,
+.sectionHeading,
+.competitionHead,
+.categoryHead,
+.scorecardHead {
+  min-width: 0;
+}
+
+.competitionHead > div,
+.categoryHead > div,
+.scorecardHead > div,
+.modalHeading > div {
+  min-width: 0;
+}
+
+.competitionHead h3,
+.categoryHead h4,
+.scorecardHead h3,
+.scorecardHead p {
+  overflow-wrap: anywhere;
+}
+
+.eventSelect select,
+.scoreInputs input,
+.scorecard textarea {
+  max-width: 100%;
+}
+
+.presentationName {
+  min-width: 0;
+}
+
+.presentationName strong,
+.presentationName span {
+  overflow-wrap: anywhere;
+}
+
+.judgeGuide {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: -2px 0 14px;
+  padding: 13px 14px;
+  border: 1px solid #d8e5dc;
+  border-radius: 9px;
+  background: #f2f8f3;
+  color: var(--success);
+}
+
+.judgeGuide > svg {
+  width: 19px;
+  height: 19px;
+  flex: none;
+}
+
+.judgeGuide div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.judgeGuide strong {
+  font-size: 12px;
+}
+
+.judgeGuide span {
+  color: #4a6754;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.judgeSync {
+  margin: 0 0 18px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.scoreError {
+  margin: 14px 0 0;
+  padding: 11px 12px;
+  border: 1px solid #f0c4bf;
+  border-radius: 7px;
+  background: #fff1ef;
+  color: var(--danger);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.criteriaModal {
+  max-height: calc(100dvh - 36px);
+}
+
+@media (max-width: 1024px) {
+  .page {
+    padding: 36px clamp(24px, 5vw, 44px) 72px;
+  }
+
+  .heading h1 {
+    font-size: clamp(38px, 6.5vw, 48px);
+    line-height: 1.08;
+  }
+
+  .eventSelect {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .eventSelect select {
+    width: 100%;
+  }
+
+  .sectionHeading,
+  .competitionHead,
+  .categoryHead {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .categoryActions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .competitionHead .outlineButton {
+    width: 100%;
+  }
+
+  .categoryActions button {
+    flex: 1 1 180px;
+    justify-content: center;
+  }
+
+  .criteriaDrafts fieldset {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .criteriaDrafts fieldset > label:first-of-type,
+  .criteriaDrafts fieldset > label:nth-of-type(2),
+  .criteriaDrafts fieldset > div,
+  .criteriaDrafts fieldset > button {
+    grid-column: 1 / -1;
+  }
+
+  .criteriaDrafts fieldset > div {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .criteriaDrafts fieldset > button {
+    width: fit-content;
+  }
+
+  .presentationList li {
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+  }
+
+  .presentationActions {
+    grid-column: 2 / -1;
+    justify-content: flex-start;
+  }
+
+  .modalActions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .modalActions > div {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+  }
+
+  .modalActions .outlineButton {
+    width: 100%;
+  }
+}
+
+@media (max-width: 760px) {
+  .page {
+    padding: 26px 16px calc(56px + env(safe-area-inset-bottom));
+  }
+
+  .backLink {
+    min-height: 44px;
+    margin-bottom: 16px;
+    font-size: 14px;
+  }
+
+  .heading {
+    padding-bottom: 24px;
+  }
+
+  .heading h1 {
+    margin: 0 0 14px;
+    font-size: clamp(34px, 11vw, 40px);
+    letter-spacing: -0.025em;
+  }
+
+  .heading p {
+    font-size: 15px;
+    line-height: 1.55;
+  }
+
+  .workspace {
+    padding-top: 20px;
+  }
+
+  .refreshRow,
+  .sectionHeading,
+  .competitionHead,
+  .categoryHead,
+  .scorecardHead {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .refreshRow {
+    gap: 10px;
+    margin-bottom: 18px;
+    font-size: 13px;
+  }
+
+  .refreshButton {
+    width: 100%;
+    min-height: 48px;
+    font-size: 14px;
+  }
+
+  .managerSection,
+  .judgeSection {
+    padding: 18px 16px;
+  }
+
+  .sectionHeading {
+    gap: 16px;
+  }
+
+  .sectionHeading h2 {
+    font-size: 28px;
+    line-height: 1.12;
+  }
+
+  .eventSelect {
+    width: 100%;
+    font-size: 11px;
+  }
+
+  .eventSelect select {
+    width: 100%;
+    height: 50px;
+    font-size: 14px;
+    text-overflow: ellipsis;
+  }
+
+  .competitionHead,
+  .categoryHead {
+    gap: 14px;
+  }
+
+  .competitionHead h3 {
+    font-size: 30px;
+    line-height: 1.08;
+  }
+
+  .categoryActions {
+    width: 100%;
+  }
+
+  .categoryActions button,
+  .outlineButton,
+  .primaryButton {
+    min-height: 46px;
+  }
+
+  .categoryActions button {
+    flex: 1 1 138px;
+    justify-content: center;
+  }
+
+  .presentationList li {
+    align-items: start;
+    padding: 14px;
+  }
+
+  .presentationActions {
+    width: 100%;
+  }
+
+  .presentationActions button {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  .judgeGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .scorecard {
+    padding: 17px;
+  }
+
+  .scorecardHead {
+    gap: 10px;
+  }
+
+  .scoreInputs label {
+    grid-template-columns: minmax(0, 1fr) 86px;
+    align-items: center;
+  }
+
+  .scoreInputs em {
+    display: block;
+    grid-column: 2;
+    margin-top: -5px;
+    color: var(--muted);
+    font-size: 10px;
+    text-align: center;
+  }
+
+  .scoreInputs input {
+    height: 46px;
+    font-size: 16px;
+  }
+
+  .scorecard textarea {
+    min-height: 90px;
+    font-size: 16px;
+  }
+
+  .submitButton {
+    min-height: 50px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 380px) {
+  .heading h1 {
+    font-size: 34px;
+  }
+
+  .competitionHead h3 {
+    font-size: 28px;
+  }
+
+  .categoryActions button {
+    flex-basis: 100%;
+  }
+
+  .criteriaDrafts fieldset > div {
+    grid-template-columns: 1fr;
+  }
+}

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import styles from "./scoring.module.css";
+import responsiveStyles from "./scoring-responsive.module.css";
 
 type ManageableEvent = {
   id: string;
@@ -115,6 +116,11 @@ function dateLabel(value: string | null) {
   return new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium", timeZone: "UTC" }).format(new Date(value));
 }
 
+function timeLabel(value: string | null) {
+  if (!value) return "agora";
+  return new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+}
+
 export default function ScoringWorkspace({ canManage, canJudge }: { canManage: boolean; canJudge: boolean }) {
   const [events, setEvents] = useState<ManageableEvent[]>([]);
   const [selectedEventId, setSelectedEventId] = useState("");
@@ -122,6 +128,8 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
   const [judgeQueue, setJudgeQueue] = useState<JudgeQueueItem[]>([]);
   const [managerLoading, setManagerLoading] = useState(canManage);
   const [judgeLoading, setJudgeLoading] = useState(canJudge);
+  const [judgeQueueUpdatedAt, setJudgeQueueUpdatedAt] = useState<Date | null>(null);
+  const [scoreErrors, setScoreErrors] = useState<Record<string, string>>({});
   const [working, setWorking] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -162,17 +170,20 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
     await loadWorkspace(nextEventId);
   }, [canManage, loadWorkspace, selectedEventId]);
 
-  const loadJudgeQueue = useCallback(async () => {
+  const loadJudgeQueue = useCallback(async (silent = false) => {
     if (!canJudge) return;
-    setJudgeLoading(true);
+    if (!silent) setJudgeLoading(true);
     const { data, error: loadError } = await createClient().rpc("scoring_judge_queue");
     if (loadError) {
-      setError(messageFrom(loadError, "Não foi possível carregar sua fila de avaliações."));
-      setJudgeQueue([]);
+      if (!silent) {
+        setError(messageFrom(loadError, "Não foi possível carregar sua fila de avaliações."));
+        setJudgeQueue([]);
+      }
     } else {
       setJudgeQueue((data || []) as unknown as JudgeQueueItem[]);
+      setJudgeQueueUpdatedAt(new Date());
     }
-    setJudgeLoading(false);
+    if (!silent) setJudgeLoading(false);
   }, [canJudge]);
 
   useEffect(() => {
@@ -185,6 +196,19 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
     if (!canJudge) return;
     const timer = window.setTimeout(() => void loadJudgeQueue(), 0);
     return () => window.clearTimeout(timer);
+  }, [canJudge, loadJudgeQueue]);
+
+  useEffect(() => {
+    if (!canJudge) return;
+    const refreshWhenVisible = () => {
+      if (!document.hidden) void loadJudgeQueue(true);
+    };
+    const interval = window.setInterval(refreshWhenVisible, 15000);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
   }, [canJudge, loadJudgeQueue]);
 
   async function refreshAll() {
@@ -292,17 +316,33 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
 
   async function submitScore(event: FormEvent<HTMLFormElement>, item: JudgeQueueItem) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const submittedScores = item.criteria.map((criterion) => ({
       criterion_id: criterion.id,
-      score: String(form.get(`criterion-${criterion.id}`) || "").replace(",", "."),
+      score: String(form.get(`criterion-${criterion.id}`) || "").trim().replace(",", "."),
     }));
-    if (submittedScores.some((score) => !score.score.trim() || !Number.isFinite(Number(score.score)))) {
-      setError("Preencha uma nota válida para cada critério.");
+    const invalidIndex = submittedScores.findIndex((score, index) => {
+      const value = Number(score.score);
+      const criterion = item.criteria[index];
+      return !score.score || !Number.isFinite(value) || value < criterion.min_score || value > criterion.max_score;
+    });
+    if (invalidIndex !== -1) {
+      const criterion = item.criteria[invalidIndex];
+      const message = `Informe uma nota entre ${criterion.min_score} e ${criterion.max_score} para “${criterion.name}”.`;
+      setScoreErrors((current) => ({ ...current, [item.presentation_id]: message }));
+      setError("");
+      const control = formElement.elements.namedItem(`criterion-${criterion.id}`);
+      if (control instanceof HTMLInputElement) control.focus();
       return;
     }
     setWorking(`score-${item.presentation_id}`);
     setError("");
+    setScoreErrors((current) => {
+      const next = { ...current };
+      delete next[item.presentation_id];
+      return next;
+    });
     const { error: scoreError } = await createClient().rpc("submit_scoring_scorecard", {
       target_presentation: item.presentation_id,
       target_assignment: item.assignment_id,
@@ -310,7 +350,7 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
       submitted_note: String(form.get("note") || ""),
     });
     if (scoreError) {
-      setError(messageFrom(scoreError, "Não foi possível registrar suas notas."));
+      setScoreErrors((current) => ({ ...current, [item.presentation_id]: messageFrom(scoreError, "Não foi possível registrar suas notas.") }));
     } else {
       setNotice("Notas registradas com sucesso. Você pode corrigi-las enquanto a apresentação estiver aberta.");
       await Promise.all([loadJudgeQueue(), canManage ? loadWorkspace(selectedEventId) : Promise.resolve()]);
@@ -319,10 +359,10 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
   }
 
   return (
-    <section className={styles.workspace}>
-      <div className={styles.refreshRow}>
+    <section className={`${styles.workspace} ${responsiveStyles.workspace}`}>
+      <div className={`${styles.refreshRow} ${responsiveStyles.refreshRow}`}>
         <span>{canManage && canJudge ? "Gestão e avaliação" : canManage ? "Gestão da avaliação" : "Painel individual do juiz"}</span>
-        <button className={styles.refreshButton} onClick={() => void refreshAll()} disabled={managerLoading || judgeLoading || Boolean(working)}>
+        <button className={`${styles.refreshButton} ${responsiveStyles.refreshButton}`} onClick={() => void refreshAll()} disabled={managerLoading || judgeLoading || Boolean(working)}>
           <RefreshCw /> Atualizar
         </button>
       </div>
@@ -331,14 +371,14 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
       {notice && <div className={styles.notice} role="status"><Check />{notice}</div>}
 
       {canManage && (
-        <section className={styles.managerSection} aria-labelledby="scoring-management-title">
-          <div className={styles.sectionHeading}>
+        <section className={`${styles.managerSection} ${responsiveStyles.managerSection}`} aria-labelledby="scoring-management-title">
+          <div className={`${styles.sectionHeading} ${responsiveStyles.sectionHeading}`}>
             <div>
               <span className="eyebrow">ORGANIZAÇÃO</span>
               <h2 id="scoring-management-title">Preparar avaliações</h2>
               <p>Uma apresentação por vez fica aberta aos juízes da categoria.</p>
             </div>
-            <label className={styles.eventSelect}>
+            <label className={`${styles.eventSelect} ${responsiveStyles.eventSelect}`}>
               Evento
               <select
                 value={selectedEventId}
@@ -365,13 +405,13 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
             <div className={styles.competitionList}>
               {workspace.competitions.map((competition) => (
                 <article className={styles.competitionCard} key={competition.id}>
-                  <div className={styles.competitionHead}>
+                  <div className={`${styles.competitionHead} ${responsiveStyles.competitionHead}`}>
                     <div>
                       <span className="eyebrow">SOMATÓRIO DE NOTAS</span>
                       <h3>{competition.name}</h3>
                       <p>{competition.criteria.length ? `${competition.criteria.length} critério(s) configurado(s).` : "Defina os critérios antes de gerar a fila."}</p>
                     </div>
-                    <button className={styles.outlineButton} onClick={() => openCriteriaEditor(competition)}><PencilLine />{competition.criteria.length ? "Editar critérios" : "Configurar critérios"}</button>
+                    <button className={`${styles.outlineButton} ${responsiveStyles.outlineButton}`} onClick={() => openCriteriaEditor(competition)}><PencilLine />{competition.criteria.length ? "Editar critérios" : "Configurar critérios"}</button>
                   </div>
 
                   {competition.criteria.length > 0 && (
@@ -383,21 +423,21 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
                   <div className={styles.categoryList}>
                     {competition.categories.length ? competition.categories.map((category) => (
                       <section className={styles.categoryCard} key={category.id}>
-                        <div className={styles.categoryHead}>
+                        <div className={`${styles.categoryHead} ${responsiveStyles.categoryHead}`}>
                           <div>
                             <h4>{category.name}</h4>
                             <p>{category.registration_count} inscrito(s) · {category.active_judges} juiz(es) ativo(s) · {category.presentations.length} apresentação(ões) na fila</p>
                           </div>
-                          <div className={styles.categoryActions}>
+                          <div className={`${styles.categoryActions} ${responsiveStyles.categoryActions}`}>
                             <button
-                              className={styles.outlineButton}
+                              className={`${styles.outlineButton} ${responsiveStyles.outlineButton}`}
                               disabled={!competition.criteria.length || !category.registration_count || working === `presentations-${category.id}`}
                               onClick={() => void generatePresentations(category)}
                             >
                               {working === `presentations-${category.id}` ? <LoaderCircle /> : <ClipboardList />} Gerar fila
                             </button>
                             <button
-                              className={styles.primaryButton}
+                              className={`${styles.primaryButton} ${responsiveStyles.primaryButton}`}
                               disabled={!category.presentations.length || working === `results-${category.id}`}
                               onClick={() => void generateResults(category)}
                             >
@@ -407,16 +447,16 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
                         </div>
 
                         {category.presentations.length ? (
-                          <ol className={styles.presentationList}>
+                          <ol className={`${styles.presentationList} ${responsiveStyles.presentationList}`}>
                             {category.presentations.map((presentation) => (
                               <li key={presentation.id}>
                                 <div className={styles.queueNumber}>{presentation.sort_order}</div>
-                                <div className={styles.presentationName}>
+                                <div className={`${styles.presentationName} ${responsiveStyles.presentationName}`}>
                                   <strong>{presentation.participant_name}</strong>
                                   <span>{presentation.submitted_scorecards}/{category.active_judges} ficha(s) enviada(s) · {totalLabel(presentation.total_score)}</span>
                                 </div>
                                 <span className={`${styles.status} ${styles[presentation.status]}`}>{presentationStatus[presentation.status]}</span>
-                                <div className={styles.presentationActions}>
+                                <div className={`${styles.presentationActions} ${responsiveStyles.presentationActions}`}>
                                   {presentation.status !== "live" && <button disabled={Boolean(working)} onClick={() => void changePresentationStatus(presentation, "live")}><Play /> Abrir</button>}
                                   {presentation.status === "live" && <button disabled={Boolean(working)} onClick={() => void changePresentationStatus(presentation, "finished")}><Check /> Concluir</button>}
                                   {presentation.status === "finished" && <button disabled={Boolean(working)} onClick={() => void changePresentationStatus(presentation, "waiting")}><ChevronDown /> Reabrir fila</button>}
@@ -438,52 +478,73 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
       )}
 
       {canJudge && (
-        <section className={styles.judgeSection} aria-labelledby="judge-scoring-title">
-          <div className={styles.sectionHeading}>
+        <section className={`${styles.judgeSection} ${responsiveStyles.judgeSection}`} aria-labelledby="judge-scoring-title">
+          <div className={`${styles.sectionHeading} ${responsiveStyles.sectionHeading}`}>
             <div>
               <span className="eyebrow">PAINEL DO JUIZ</span>
               <h2 id="judge-scoring-title">Avaliações abertas</h2>
               <p>As notas ficam visíveis apenas para você até a organização concluir a apresentação.</p>
             </div>
           </div>
+          <div className={responsiveStyles.judgeGuide}>
+            <Check aria-hidden="true" />
+            <div>
+              <strong>Como avaliar</strong>
+              <span>Preencha todos os critérios, confira as notas e toque em “Registrar notas”. Enquanto a apresentação estiver aberta, você pode corrigir sua ficha.</span>
+            </div>
+          </div>
+          <div className={responsiveStyles.judgeSync} role="status">
+            Atualização automática ativa{judgeQueueUpdatedAt ? ` · atualizado às ${timeLabel(judgeQueueUpdatedAt.toISOString())}` : ""}
+          </div>
           {judgeLoading ? (
             <div className={styles.loading}><LoaderCircle /> Carregando suas avaliações…</div>
           ) : judgeQueue.length ? (
-            <div className={styles.judgeGrid}>
+            <div className={`${styles.judgeGrid} ${responsiveStyles.judgeGrid}`}>
               {judgeQueue.map((item) => (
-                <form className={styles.scorecard} key={`${item.presentation_id}-${item.assignment_id}`} onSubmit={(event) => void submitScore(event, item)}>
-                  <div className={styles.scorecardHead}>
+                <form className={`${styles.scorecard} ${responsiveStyles.scorecard}`} key={`${item.presentation_id}-${item.assignment_id}`} onSubmit={(event) => void submitScore(event, item)} aria-label={`Ficha de avaliação de ${item.participant_name}`} aria-busy={working === `score-${item.presentation_id}`}>
+                  <div className={`${styles.scorecardHead} ${responsiveStyles.scorecardHead}`}>
                     <div>
                       <span>{item.event_name}</span>
                       <h3>{item.participant_name}</h3>
                       <p>{item.competition_name} · {item.category_name} · Ordem {item.sort_order}</p>
                     </div>
-                    {item.submitted && <b><Check /> Salvo</b>}
+                    {item.submitted && <b><Check /> Salvo às {timeLabel(item.submitted_at)}</b>}
                   </div>
-                  <div className={styles.scoreInputs}>
+                  <div className={`${styles.scoreInputs} ${responsiveStyles.scoreInputs}`}>
                     {item.criteria.map((criterion) => {
                       const savedValue = item.scores?.[criterion.id];
+                      const inputId = `score-${item.presentation_id}-${criterion.id}`;
+                      const rangeId = `${inputId}-range`;
                       return (
                         <label key={criterion.id}>
                           <span><strong>{criterion.name}</strong>{criterion.description && <small>{criterion.description}</small>}</span>
                           <input
+                            id={inputId}
                             name={`criterion-${criterion.id}`}
-                            type="number"
+                            type="text"
                             inputMode="decimal"
-                            min={criterion.min_score}
-                            max={criterion.max_score}
-                            step="0.01"
+                            pattern="[0-9]+([,.][0-9]+)?"
+                            placeholder="0,00"
                             required
+                            autoComplete="off"
                             defaultValue={savedValue === undefined ? "" : String(savedValue)}
-                            aria-label={`Nota para ${criterion.name}`}
+                            aria-describedby={rangeId}
+                            aria-invalid={Boolean(scoreErrors[item.presentation_id])}
+                            onChange={() => setScoreErrors((current) => {
+                              if (!current[item.presentation_id]) return current;
+                              const next = { ...current };
+                              delete next[item.presentation_id];
+                              return next;
+                            })}
                           />
-                          <em>{criterion.min_score}–{criterion.max_score}</em>
+                          <em id={rangeId}>{criterion.min_score}–{criterion.max_score}</em>
                         </label>
                       );
                     })}
                   </div>
-                  <label className={styles.noteField}>Observação opcional<textarea name="note" maxLength={1000} defaultValue={item.note || ""} placeholder="Use apenas para observações da comissão." /></label>
-                  <button className={styles.submitButton} disabled={working === `score-${item.presentation_id}`}>
+                  {scoreErrors[item.presentation_id] && <div className={responsiveStyles.scoreError} role="alert">{scoreErrors[item.presentation_id]}</div>}
+                  <label className={styles.noteField}>Observação opcional<textarea name="note" maxLength={1000} defaultValue={item.note || ""} placeholder="Use apenas para observações da comissão." autoComplete="off" /></label>
+                  <button className={`${styles.submitButton} ${responsiveStyles.submitButton}`} disabled={working === `score-${item.presentation_id}`}>
                     {working === `score-${item.presentation_id}` ? <LoaderCircle /> : <Send />}
                     {item.submitted ? "Atualizar notas" : "Registrar notas"}
                   </button>
@@ -499,12 +560,12 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
       {criteriaCompetition && (
         <div className={styles.modalLayer} role="dialog" aria-modal="true" aria-labelledby="criteria-modal-title">
           <button className={styles.modalBackdrop} onClick={() => setCriteriaCompetition(null)} aria-label="Fechar configuração" />
-          <form className={styles.criteriaModal} onSubmit={(event) => void saveCriteria(event)}>
+          <form className={`${styles.criteriaModal} ${responsiveStyles.criteriaModal}`} onSubmit={(event) => void saveCriteria(event)}>
             <div className={styles.modalHeading}>
               <div><span className="eyebrow">{criteriaCompetition.name}</span><h2 id="criteria-modal-title">Critérios de avaliação</h2><p>Defina de 1 a 12 critérios. Depois da primeira ficha enviada, a edição fica bloqueada para preservar o resultado.</p></div>
               <button type="button" className={styles.iconButton} onClick={() => setCriteriaCompetition(null)} aria-label="Fechar"><X /></button>
             </div>
-            <div className={styles.criteriaDrafts}>
+            <div className={`${styles.criteriaDrafts} ${responsiveStyles.criteriaDrafts}`}>
               {criteriaDraft.map((criterion, index) => (
                 <fieldset key={`${index}-${criterion.name}`}>
                   <legend>Critério {index + 1}</legend>
@@ -518,7 +579,7 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
                 </fieldset>
               ))}
             </div>
-            <div className={styles.modalActions}>
+            <div className={`${styles.modalActions} ${responsiveStyles.modalActions}`}>
               <button type="button" className={styles.outlineButton} disabled={criteriaDraft.length >= 12} onClick={() => setCriteriaDraft((items) => [...items, { name: "", description: "", min_score: "0", max_score: "10" }])}><Plus /> Adicionar critério</button>
               <div><button type="button" className={styles.cancelButton} onClick={() => setCriteriaCompetition(null)}>Cancelar</button><button className={styles.primaryButton} disabled={working === "criteria"}>{working === "criteria" ? <LoaderCircle /> : <Check />} Salvar critérios</button></div>
             </div>

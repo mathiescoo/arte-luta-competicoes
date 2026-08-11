@@ -104,6 +104,13 @@
   .checkin-tools .search { min-width: min(100%, 260px); }
   .results-list article,
   .checkin-list article { min-width: 0; }
+  .event-detail-head { align-items: flex-start; flex-wrap: wrap; }
+  .event-summary { flex-wrap: wrap; gap: 10px 18px; }
+  .event-summary span { min-width: 0; overflow-wrap: anywhere; }
+  .participant-table article > div,
+  .results-list article > div { min-width: 0; }
+  .participant-table article strong,
+  .results-list article b { overflow-wrap: anywhere; word-break: break-word; }
 }
 
 @media (max-width: 760px) {
