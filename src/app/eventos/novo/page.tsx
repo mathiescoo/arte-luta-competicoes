@@ -68,7 +68,7 @@ export default function NovoEventoPage() {
         <section className="form-section">
           <h2>Informações gerais</h2>
           <div className="form-grid">
-            <label className="wide">Nome do evento<input name="name" required placeholder="Ex.: Encontro Arte-Luta Brasil 2027" /></label>
+            <label className="wide">Nome do evento<input name="name" required placeholder="Ex.: Arena Arte Luta 2027" /></label>
             <label>Edição<input name="edition" placeholder="Ex.: 5ª edição" /></label>
             <label>Data<input name="date" type="date" /></label>
             <label>Cidade<input name="city" placeholder="São Paulo" /></label>

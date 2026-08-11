@@ -27,9 +27,9 @@ import "./responsive-system.css";
 import "./responsive-experience.css";
 
 export const metadata: Metadata = {
-  title: "Arte-Luta Brasil Competições",
-  description: "Gestão completa de campeonatos e festivais de capoeira.",
-  applicationName: "Arte-Luta Competições",
+  title: "Arena Arte Luta",
+  description: "Gestão profissional de campeonatos, avaliações e resultados.",
+  applicationName: "Arena Arte Luta",
   manifest: "/manifest.webmanifest",
 };
 export const viewport: Viewport = { themeColor: "#171813", width: "device-width", initialScale: 1 };

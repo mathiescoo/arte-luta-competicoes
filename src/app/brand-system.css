@@ -1,8 +1,8 @@
 /*
- * Sistema visual da Capoeira Arte-Luta Brasil.
- * Neutros ocupam a maior parte da interface; as quatro cores da marca têm
+ * Sistema visual da Arena Arte Luta.
+ * Neutros ocupam a maior parte da interface; as quatro cores da logo têm
  * funções claras: azul para ação, amarelo para destaque, verde para sucesso
- * e vermelho apenas para alertas/destruição.
+ * e vermelho apenas para alertas e destruição.
  */
 :root {
   --ink: #151814;
@@ -215,7 +215,7 @@ textarea:focus { border-color: var(--brand-blue) !important; }
 @media (max-width: 760px) {
   .app-shell > main { margin-left: 0; padding: 0 16px 40px; }
   .app-shell > main > header { height: 92px; }
-  .login-brand { min-height: 380px; padding: 194px 28px 32px; }
+  .login-brand { min-height: 430px; padding: 238px 28px 32px; }
   .login-brand-logo { top: 22px; left: 28px; width: min(230px, 64vw); }
   .login-brand::after { display: none; }
   .login-brand h1 { font-size: 36px; }
@@ -226,6 +226,6 @@ textarea:focus { border-color: var(--brand-blue) !important; }
 }
 
 @media (max-width: 430px) {
-  .login-brand { min-height: 365px; padding-top: 194px; }
+  .login-brand { min-height: 405px; padding-top: 228px; }
   .login-brand h1 { font-size: 32px; }
 }

@@ -10,7 +10,7 @@ begin
   if admin_id is null then raise exception 'Usuário % não encontrado em Authentication', admin_email; end if;
 
   insert into public.organizations (name, slug)
-  values ('Capoeira Arte-Luta Brasil', 'arte-luta-brasil')
+  values ('Arena Arte Luta', 'arena-arte-luta')
   on conflict (slug) do update set name = excluded.name
   returning id into org_id;
 

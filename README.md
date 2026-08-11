@@ -1,6 +1,6 @@
-# Arte-Luta Brasil Competições
+# Arena Arte Luta
 
-Plataforma para operação de campeonatos da Capoeira Arte-Luta Brasil: eventos, categorias, inscrições, rodas, juízes, votação por bandeiras, Cante Comigo por notas, resultados e telões públicos.
+Plataforma para operação de campeonatos da Arena Arte Luta: eventos, categorias, inscrições, rodas, juízes, votação por bandeiras, Cante Comigo por notas, resultados e telões públicos.
 
 ## Rodar localmente
 

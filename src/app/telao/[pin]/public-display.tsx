@@ -36,7 +36,7 @@ export default function PublicDisplay({ board, pin }: { board: Board; pin: strin
   return (
     <main className="public-display">
       <header>
-        <Image className="display-logo-image" src="/brand/capoeira-arte-luta-brasil.png" alt="Capoeira Arte-Luta Brasil" width={1536} height={1024} priority />
+        <Image className="display-logo-image" src="/brand/capoeira-arte-luta-brasil.png" alt="Logo Capoeira Arte-Luta Brasil" width={1536} height={1024} priority />
         <div className="display-event-title"><span>CAMPEONATO AO VIVO</span><h1>{board.event_name}</h1></div>
         <div className="display-session"><Radio /> {live ? "AO VIVO" : "TELÃO"}<small>{board.ring_name || board.session_name}</small></div>
       </header>

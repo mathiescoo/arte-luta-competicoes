@@ -85,8 +85,8 @@ export default function Dashboard({ name, role, events }: { name: string; role: 
   return (
     <div className="app-shell">
       <aside className={`sidebar ${navOpen ? "open" : ""}`}>
-        <Link className="brand brand-logo-link" href="/painel" aria-label="Capoeira Arte-Luta Brasil">
-          <Image className="brand-logo-image" src="/brand/capoeira-arte-luta-brasil.png" alt="Capoeira Arte-Luta Brasil" width={1536} height={1024} priority />
+        <Link className="brand brand-logo-link" href="/painel" aria-label="Arena Arte Luta">
+          <Image className="brand-logo-image" src="/brand/capoeira-arte-luta-brasil.png" alt="Logo Capoeira Arte-Luta Brasil" width={1536} height={1024} priority />
         </Link>
         <button className="mobile-close" aria-label="Fechar menu" onClick={() => setNavOpen(false)}>
           <X />

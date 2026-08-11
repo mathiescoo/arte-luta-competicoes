@@ -1,7 +1,7 @@
 {
-  "name": "Arte-Luta Brasil Competições",
-  "short_name": "Arte-Luta",
-  "description": "Gestão de campeonatos e festivais de capoeira",
+  "name": "Arena Arte Luta",
+  "short_name": "Arena Luta",
+  "description": "Gestão profissional de campeonatos, avaliações e resultados",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f4f2eb",

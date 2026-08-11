@@ -10,8 +10,8 @@ function AuthShell({ children }: { children: React.ReactNode }) {
   return (
     <main className="login-page">
       <section className="login-brand">
-        <Image className="login-brand-logo" src="/brand/capoeira-arte-luta-brasil.png" alt="Capoeira Arte-Luta Brasil" width={1536} height={1024} priority />
-        <span>GESTÃO DE CAMPEONATOS</span>
+        <Image className="login-brand-logo" src="/brand/capoeira-arte-luta-brasil.png" alt="Logo Capoeira Arte-Luta Brasil" width={1536} height={1024} priority />
+        <span>ARENA ARTE LUTA</span>
         <h1>Conectando sua conta.</h1>
         <p>Estamos validando o acesso seguro com a plataforma.</p>
       </section>

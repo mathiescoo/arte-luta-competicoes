@@ -36,8 +36,8 @@ function Login() {
   return (
     <main className="login-page">
       <section className="login-brand">
-        <Image className="login-brand-logo" src="/brand/capoeira-arte-luta-brasil.png" alt="Capoeira Arte-Luta Brasil" width={1536} height={1024} priority />
-        <span>GESTÃO DE CAMPEONATOS</span>
+        <Image className="login-brand-logo" src="/brand/capoeira-arte-luta-brasil.png" alt="Logo Capoeira Arte-Luta Brasil" width={1536} height={1024} priority />
+        <span>ARENA ARTE LUTA</span>
         <h1>Competições que<br />mantêm a roda viva.</h1>
         <p>Gestão segura de eventos, avaliações e resultados em tempo real.</p>
       </section>
