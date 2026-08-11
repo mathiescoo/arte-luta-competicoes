@@ -229,3 +229,59 @@ textarea:focus { border-color: var(--brand-blue) !important; }
   .login-brand { min-height: 405px; padding-top: 228px; }
   .login-brand h1 { font-size: 32px; }
 }
+
+/* Bloco de marca do acesso: logo e texto seguem o fluxo, sem sobreposição. */
+.login-brand:has(.login-brand-logo) {
+  padding: clamp(52px, 9vh, 108px) 9vw;
+}
+
+.login-brand .login-brand-logo {
+  position: relative;
+  top: auto;
+  left: auto;
+  display: block;
+  width: min(330px, 100%);
+  height: auto;
+  margin: 0 0 clamp(26px, 4vh, 46px);
+  object-fit: contain;
+}
+
+.login-brand:has(.login-brand-logo) > span { margin-top: 0; }
+.login-brand:has(.login-brand-logo) h1 { max-width: 11ch; line-height: 1.05; }
+
+@media (max-width: 960px) {
+  .login-brand:has(.login-brand-logo) {
+    min-height: 0;
+    padding: 48px 36px 54px;
+    justify-content: flex-start;
+  }
+
+  .login-brand .login-brand-logo {
+    width: min(330px, 72vw);
+    margin-bottom: 30px;
+  }
+
+  .login-brand:has(.login-brand-logo) h1 { max-width: 12ch; }
+}
+
+@media (max-width: 760px) {
+  .login-brand:has(.login-brand-logo) {
+    min-height: 0;
+    padding: 36px 28px 46px;
+  }
+
+  .login-brand .login-brand-logo {
+    width: min(270px, 74vw);
+    margin-bottom: 24px;
+  }
+
+  .login-brand:has(.login-brand-logo) h1 {
+    max-width: 12ch;
+    font-size: clamp(36px, 10vw, 48px);
+  }
+}
+
+@media (max-width: 430px) {
+  .login-brand:has(.login-brand-logo) { padding: 30px 22px 40px; }
+  .login-brand .login-brand-logo { width: min(240px, 78vw); margin-bottom: 22px; }
+}
