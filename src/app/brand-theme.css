@@ -1,8 +1,11 @@
 /* Marca principal da Arena Arte Luta: a logo original preserva sua proporção. */
+.sidebar { overflow-y: auto; scrollbar-width: thin; }
+
 .brand-logo-link {
-  display: block !important;
+  display: grid !important;
+  gap: 8px;
   padding: 0 2px 15px !important;
-  line-height: 0;
+  line-height: 1;
 }
 
 .sidebar .brand-logo-image {
@@ -12,6 +15,15 @@
   max-height: 116px;
   object-fit: contain;
   object-position: left center;
+}
+
+.brand-logo-link .brand-platform-name {
+  margin: 0;
+  color: #f2cf72;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .17em;
+  line-height: 1.2;
 }
 
 .login-brand-logo {

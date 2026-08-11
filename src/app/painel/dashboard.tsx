@@ -87,6 +87,7 @@ export default function Dashboard({ name, role, events }: { name: string; role: 
       <aside className={`sidebar ${navOpen ? "open" : ""}`}>
         <Link className="brand brand-logo-link" href="/painel" aria-label="Arena Arte Luta">
           <Image className="brand-logo-image" src="/brand/capoeira-arte-luta-brasil.png" alt="Logo Capoeira Arte-Luta Brasil" width={1536} height={1024} priority />
+          <span className="brand-platform-name">ARENA ARTE LUTA</span>
         </Link>
         <button className="mobile-close" aria-label="Fechar menu" onClick={() => setNavOpen(false)}>
           <X />
