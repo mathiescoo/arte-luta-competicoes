@@ -1,12 +1,13 @@
 {
+  "id": "/arena-arte-luta-capoeira-v2",
   "name": "Arena Arte Luta",
   "short_name": "Arena Luta",
   "description": "Gestão profissional de campeonatos, avaliações e resultados",
-  "start_url": "/",
+  "start_url": "/?source=arena-arte-luta-capoeira-v2",
   "display": "standalone",
-  "background_color": "#f4f2eb",
-  "theme_color": "#171813",
+  "background_color": "#11140f",
+  "theme_color": "#11140f",
   "icons": [
-    { "src": "/brand/capoeira-app-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    { "src": "/brand/capoeira-app-icon-v2.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ]
 }

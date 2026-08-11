@@ -32,11 +32,12 @@ export const metadata: Metadata = {
   applicationName: "Arena Arte Luta",
   manifest: "/manifest.webmanifest",
   icons: {
-    icon: [{ url: "/brand/capoeira-app-icon.png", type: "image/png", sizes: "512x512" }],
-    apple: [{ url: "/brand/capoeira-app-icon.png", type: "image/png", sizes: "512x512" }],
+    icon: [{ url: "/brand/capoeira-app-icon-v2.png", type: "image/png", sizes: "512x512" }],
+    shortcut: [{ url: "/brand/capoeira-app-icon-v2.png", type: "image/png", sizes: "512x512" }],
+    apple: [{ url: "/brand/capoeira-app-icon-v2.png", type: "image/png", sizes: "512x512" }],
   },
 };
-export const viewport: Viewport = { themeColor: "#171813", width: "device-width", initialScale: 1 };
+export const viewport: Viewport = { themeColor: "#11140f", width: "device-width", initialScale: 1 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return <html lang="pt-BR"><body>{children}</body></html>;
