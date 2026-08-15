@@ -4,7 +4,6 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import {
   Award,
   Check,
-  ChevronDown,
   ClipboardList,
   LoaderCircle,
   Music2,
@@ -12,6 +11,7 @@ import {
   Play,
   Plus,
   RefreshCw,
+  RotateCcw,
   Send,
   Trophy,
   X,
@@ -19,6 +19,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import styles from "./scoring.module.css";
 import responsiveStyles from "./scoring-responsive.module.css";
+import controls from "./scoring-controls.module.css";
 
 type ManageableEvent = {
   id: string;
@@ -106,7 +107,15 @@ const presentationStatus: Record<Presentation["status"], string> = {
 };
 
 function messageFrom(error: { message?: string } | null, fallback: string) {
-  return error?.message || fallback;
+  const message = error?.message || fallback;
+  if (/assign at least (?:one|three) active judges?/i.test(message)) return "Atribua pelo menos 1 juiz ativo a esta categoria para iniciar a avaliação.";
+  if (/wait for every active judge/i.test(message)) return "Aguarde todos os juízes ativos enviarem suas fichas antes de concluir.";
+  if (/restart this evaluation/i.test(message)) return "Esta avaliação já possui notas. Use “Reiniciar avaliação” para apagar as fichas e voltar à fila.";
+  if (/finish or restart the currently open/i.test(message)) return "Conclua ou reinicie a avaliação que já está aberta antes de abrir outro participante.";
+  if (/published results/i.test(message)) return "Esta categoria já possui resultados publicados e não pode ser reiniciada.";
+  if (/judge assignments are locked/i.test(message)) return "A escala de jurados desta categoria já começou. Para alterá-la, reinicie as avaliações concluídas e deixe todas na fila.";
+  if (/return the presentation to the queue/i.test(message)) return "Volte a apresentação para a fila antes de abri-la novamente.";
+  return message;
 }
 
 function totalLabel(total: number | null) {
@@ -143,6 +152,8 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
   const [notice, setNotice] = useState("");
   const [criteriaCompetition, setCriteriaCompetition] = useState<ScoringCompetition | null>(null);
   const [criteriaDraft, setCriteriaDraft] = useState<CriterionDraft[]>(defaultCriteria);
+  const [restartTarget, setRestartTarget] = useState<Presentation | null>(null);
+  const [restartError, setRestartError] = useState("");
 
   const loadWorkspace = useCallback(async (eventId: string) => {
     if (!eventId) {
@@ -303,7 +314,34 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
     if (statusError) {
       setError(messageFrom(statusError, "Não foi possível atualizar a apresentação."));
     } else {
-      setNotice(status === "live" ? "Apresentação aberta para os juízes." : status === "finished" ? "Apresentação concluída." : "Apresentação devolvida para a fila.");
+      setNotice(status === "live" ? "Apresentação aberta para os juízes." : status === "finished" ? "Apresentação concluída." : "Abertura cancelada. A apresentação voltou para a fila sem apagar notas.");
+      await Promise.all([loadWorkspace(selectedEventId), canJudge ? loadJudgeQueue() : Promise.resolve()]);
+    }
+    setWorking("");
+  }
+
+  function openRestartDialog(presentation: Presentation) {
+    setRestartError("");
+    setError("");
+    setNotice("");
+    setRestartTarget(presentation);
+  }
+
+  async function restartPresentation() {
+    if (!restartTarget) return;
+    setWorking(`restart-${restartTarget.id}`);
+    setRestartError("");
+    const { data, error: restartRequestError } = await createClient().rpc("restart_scoring_presentation", {
+      target_presentation: restartTarget.id,
+    });
+    if (restartRequestError) {
+      setRestartError(messageFrom(restartRequestError, "Não foi possível reiniciar a avaliação."));
+    } else {
+      const result = data as { scorecards_deleted?: number; results_invalidated?: number } | null;
+      const clearedScorecards = Number(result?.scorecards_deleted || 0);
+      const clearedResults = Number(result?.results_invalidated || 0);
+      setRestartTarget(null);
+      setNotice(`Avaliação reiniciada. ${clearedScorecards} ficha(s) foram apagadas e a apresentação voltou para a fila.${clearedResults ? " A classificação anterior foi invalidada." : ""}`);
       await Promise.all([loadWorkspace(selectedEventId), canJudge ? loadJudgeQueue() : Promise.resolve()]);
     }
     setWorking("");
@@ -435,6 +473,12 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
                           <div>
                             <h4>{category.name}</h4>
                             <p>{category.registration_count} inscrito(s) · {category.active_judges} juiz(es) ativo(s) · {category.presentations.length} apresentação(ões) na fila</p>
+                            <small className={category.active_judges ? controls.judgeReady : controls.judgeRequired}>
+                              {category.active_judges ? `Pronta para iniciar com ${category.active_judges} juiz(es) ativo(s).` : "Atribua ao menos 1 juiz ativo para abrir a avaliação."}
+                            </small>
+                            {category.presentations.some((presentation) => presentation.status !== "waiting") && (
+                              <small className={controls.judgeScaleHint}>Para preservar a classificação, mantenha a escala de jurados desta categoria até finalizá-la.</small>
+                            )}
                           </div>
                           <div className={`${styles.categoryActions} ${responsiveStyles.categoryActions}`}>
                             <button
@@ -446,7 +490,7 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
                             </button>
                             <button
                               className={`${styles.primaryButton} ${responsiveStyles.primaryButton}`}
-                              disabled={!category.presentations.length || working === `results-${category.id}`}
+                              disabled={!category.presentations.length || category.active_judges < 1 || category.presentations.some((presentation) => presentation.status !== "finished") || working === `results-${category.id}`}
                               onClick={() => void generateResults(category)}
                             >
                               {working === `results-${category.id}` ? <LoaderCircle /> : <Trophy />} Gerar classificação
@@ -456,21 +500,34 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
 
                         {category.presentations.length ? (
                           <ol className={`${styles.presentationList} ${responsiveStyles.presentationList}`}>
-                            {category.presentations.map((presentation) => (
-                              <li key={presentation.id}>
-                                <div className={styles.queueNumber}>{presentation.sort_order}</div>
-                                <div className={`${styles.presentationName} ${responsiveStyles.presentationName}`}>
-                                  <strong>{presentation.participant_name}</strong>
-                                  <span>{presentation.submitted_scorecards}/{category.active_judges} ficha(s) enviada(s) · {totalLabel(presentation.total_score)}</span>
-                                </div>
-                                <span className={`${styles.status} ${styles[presentation.status]}`}>{presentationStatus[presentation.status]}</span>
-                                <div className={`${styles.presentationActions} ${responsiveStyles.presentationActions}`}>
-                                  {presentation.status !== "live" && <button disabled={Boolean(working)} onClick={() => void changePresentationStatus(presentation, "live")}><Play /> Abrir</button>}
-                                  {presentation.status === "live" && <button disabled={Boolean(working)} onClick={() => void changePresentationStatus(presentation, "finished")}><Check /> Concluir</button>}
-                                  {presentation.status === "finished" && <button disabled={Boolean(working)} onClick={() => void changePresentationStatus(presentation, "waiting")}><ChevronDown /> Reabrir fila</button>}
-                                </div>
-                              </li>
-                            ))}
+                            {category.presentations.map((presentation) => {
+                              const canFinish = category.active_judges > 0 && presentation.submitted_scorecards >= category.active_judges;
+                              const needsRestart = presentation.submitted_scorecards > 0;
+                              return (
+                                <li key={presentation.id}>
+                                  <div className={styles.queueNumber}>{presentation.sort_order}</div>
+                                  <div className={`${styles.presentationName} ${responsiveStyles.presentationName}`}>
+                                    <strong>{presentation.participant_name}</strong>
+                                    <span>{presentation.submitted_scorecards}/{category.active_judges} ficha(s) enviada(s) · {totalLabel(presentation.total_score)}</span>
+                                  </div>
+                                  <span className={`${styles.status} ${styles[presentation.status]}`}>{presentationStatus[presentation.status]}</span>
+                                  <div className={`${styles.presentationActions} ${controls.presentationActions} ${responsiveStyles.presentationActions}`}>
+                                    {presentation.status === "waiting" && !needsRestart && (
+                                      <button disabled={Boolean(working) || category.active_judges < 1} onClick={() => void changePresentationStatus(presentation, "live")}><Play /> Abrir</button>
+                                    )}
+                                    {presentation.status === "live" && (
+                                      <button disabled={Boolean(working) || !canFinish} onClick={() => void changePresentationStatus(presentation, "finished")}><Check /> Concluir</button>
+                                    )}
+                                    {presentation.status === "live" && !needsRestart && (
+                                      <button className={controls.cancelPresentationButton} disabled={Boolean(working)} onClick={() => void changePresentationStatus(presentation, "waiting")}><X /> Cancelar abertura</button>
+                                    )}
+                                    {(presentation.status === "finished" || needsRestart) && (
+                                      <button className={controls.restartButton} disabled={Boolean(working)} onClick={() => openRestartDialog(presentation)}><RotateCcw /> Reiniciar avaliação</button>
+                                    )}
+                                  </div>
+                                </li>
+                              );
+                            })}
                           </ol>
                         ) : (
                           <p className={styles.emptyCategory}>As inscrições desta categoria aparecerão aqui após gerar a fila.</p>
@@ -598,6 +655,34 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
               <div><button type="button" className={styles.cancelButton} onClick={() => setCriteriaCompetition(null)}>Cancelar</button><button className={styles.primaryButton} disabled={working === "criteria"}>{working === "criteria" ? <LoaderCircle /> : <Check />} Salvar critérios</button></div>
             </div>
           </form>
+        </div>
+      )}
+
+      {restartTarget && (
+        <div className={styles.modalLayer} role="dialog" aria-modal="true" aria-labelledby="restart-modal-title">
+          <button className={styles.modalBackdrop} type="button" disabled={working === `restart-${restartTarget.id}`} onClick={() => setRestartTarget(null)} aria-label="Fechar confirmação" />
+          <section className={`${styles.criteriaModal} ${controls.restartModal} ${responsiveStyles.criteriaModal}`}>
+            <div className={styles.modalHeading}>
+              <div>
+                <span className="eyebrow">REINICIAR AVALIAÇÃO</span>
+                <h2 id="restart-modal-title">Reiniciar {restartTarget.participant_name}?</h2>
+                <p>Esta ação apaga as fichas já enviadas, devolve a apresentação para a fila e permite abrir novamente para os jurados.</p>
+              </div>
+              <button type="button" className={styles.iconButton} disabled={working === `restart-${restartTarget.id}`} onClick={() => setRestartTarget(null)} aria-label="Fechar"><X /></button>
+            </div>
+            <div className={controls.restartSummary}>
+              <strong>{restartTarget.submitted_scorecards} ficha(s) serão apagadas.</strong>
+              <span>Se já houver uma classificação não publicada nesta categoria, ela será removida e poderá ser gerada novamente. Resultados publicados não podem ser reiniciados.</span>
+            </div>
+            {restartError && <div className="form-error" role="alert">{restartError}</div>}
+            <div className={styles.modalActions}>
+              <span />
+              <div>
+                <button type="button" className={styles.cancelButton} disabled={working === `restart-${restartTarget.id}`} onClick={() => setRestartTarget(null)}>Voltar</button>
+                <button type="button" className={controls.dangerButton} disabled={working === `restart-${restartTarget.id}`} onClick={() => void restartPresentation()}><RotateCcw />{working === `restart-${restartTarget.id}` ? "Reiniciando..." : "Reiniciar e apagar notas"}</button>
+              </div>
+            </div>
+          </section>
         </div>
       )}
     </section>

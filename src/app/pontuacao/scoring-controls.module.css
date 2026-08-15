@@ -1,0 +1,71 @@
+.judgeReady,
+.judgeRequired {
+  display: block;
+  margin-top: 5px;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.judgeReady { color: var(--success); }
+.judgeRequired { color: var(--danger); }
+
+.judgeScaleHint {
+  display: block;
+  margin-top: 4px;
+  color: #6a6253;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.cancelPresentationButton {
+  border-color: #e7b9b0 !important;
+  background: #fff8f6 !important;
+  color: #8b3a2b !important;
+}
+
+.restartButton {
+  border-color: #decf8e !important;
+  background: #fffbed !important;
+  color: #805600 !important;
+}
+
+.presentationActions {
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.restartModal { width: min(610px, 100%); }
+
+.restartSummary {
+  display: grid;
+  gap: 6px;
+  margin-top: 20px;
+  padding: 14px;
+  border: 1px solid #efc8c4;
+  border-radius: 8px;
+  background: #fff4f2;
+  color: #7d2925;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.restartSummary strong { font-size: 13px; }
+
+.dangerButton {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 14px;
+  border: 1px solid #c9443d;
+  border-radius: 7px;
+  background: var(--danger);
+  color: #fff;
+  font: 700 12px Arial, sans-serif;
+  cursor: pointer;
+}
+
+.dangerButton:hover:not(:disabled) { background: #941d25; }
+.dangerButton:disabled { cursor: not-allowed; opacity: .55; }
+.dangerButton svg { width: 16px; }
