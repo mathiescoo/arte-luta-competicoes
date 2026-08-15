@@ -11,12 +11,13 @@ export default async function ParticipantsPage() {
   const { data: claims } = await supabase.auth.getClaims();
   if (!claims?.claims?.sub) redirect("/entrar");
 
-  const { data: role } = await supabase
+  const { data: roles } = await supabase
     .from("user_roles")
-    .select("organization_id")
+    .select("organization_id,role")
     .eq("user_id", claims.claims.sub)
-    .limit(1)
-    .single();
+    .in("role", ["admin", "organizer"])
+    .limit(1);
+  const role = roles?.[0];
   if (!role) redirect("/painel");
 
   const [{ data: events }, { data: participants }] = await Promise.all([
@@ -34,7 +35,7 @@ export default async function ParticipantsPage() {
 
   const participantList = participants || [];
   const participantManagerKey = participantList.map((participant) => `${participant.id}:${participant.registrations
-    .map((registration) => `${registration.id}:${JSON.stringify(registration.data)}`)
+    .map((registration) => `${registration.id}:${registration.event_id}:${registration.category_id}:${registration.attendance_confirmed}:${registration.payment_confirmed}:${JSON.stringify(registration.data)}`)
     .join(",")}`).join("|");
 
   return (

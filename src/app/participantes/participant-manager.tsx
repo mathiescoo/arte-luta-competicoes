@@ -1,18 +1,13 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
-import { Plus, Search, UserRound, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { AlertTriangle, ArrowRightLeft, Pencil, Plus, Search, Trash2, UserRound, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
-type EventItem = {
-  id: string;
-  name: string;
-  competitions: Array<{
-    id: string;
-    name: string;
-    categories: Array<{ id: string; name: string }>;
-  }>;
-};
+type Category = { id: string; name: string };
+type Competition = { id: string; name: string; categories: Category[] };
+type EventItem = { id: string; name: string; competitions: Competition[] };
 
 type Registration = {
   id: string;
@@ -29,6 +24,13 @@ type Participant = {
   birth_date: string | null;
   private_data: Record<string, unknown>;
   registrations: Registration[];
+};
+
+type RegistrationDetails = {
+  registration: Registration;
+  event?: EventItem;
+  competition?: Competition;
+  category?: Category;
 };
 
 function registrationAge(participant: Participant) {
@@ -52,6 +54,40 @@ function ageLabel(age: string) {
   return /\bano(?:s)?\b/i.test(age) ? age : `${age} anos`;
 }
 
+function detailsFor(registration: Registration, events: EventItem[]): RegistrationDetails {
+  const event = events.find((item) => item.id === registration.event_id);
+  const competition = event?.competitions.find((item) => item.categories.some((category) => category.id === registration.category_id));
+  return {
+    registration,
+    event,
+    competition,
+    category: competition?.categories.find((category) => category.id === registration.category_id),
+  };
+}
+
+function registrationLabel(details: RegistrationDetails) {
+  return [details.event?.name, details.competition?.name, details.category?.name]
+    .filter(Boolean)
+    .join(" · ") || "Inscrição sem categoria";
+}
+
+function categoriesLabel(participant: Participant, events: EventItem[]) {
+  const labels = participant.registrations.map((registration) => {
+    const details = detailsFor(registration, events);
+    return details.category?.name || "Sem categoria";
+  });
+  return [...new Set(labels)].join(" · ") || "Sem inscrição";
+}
+
+function actionMessage(message: string) {
+  if (/already started|received scores/i.test(message)) return "Esta apresentação já foi iniciada ou recebeu notas. Para proteger o resultado, ela não pode mais ser alterada.";
+  if (/already has a result/i.test(message)) return "Este participante já possui resultado homologado e não pode ser alterado.";
+  if (/match bracket/i.test(message)) return "Remova primeiro o participante da chave de confrontos para fazer essa alteração.";
+  if (/already registered/i.test(message)) return "O participante já está inscrito nessa categoria.";
+  if (/same competition/i.test(message)) return "A troca é permitida somente entre categorias da mesma competição.";
+  return message;
+}
+
 export default function ParticipantManager({
   organizationId,
   initialEvents,
@@ -61,12 +97,20 @@ export default function ParticipantManager({
   initialEvents: EventItem[];
   initialParticipants: Participant[];
 }) {
+  const router = useRouter();
   const [participants, setParticipants] = useState(initialParticipants);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [eventId, setEventId] = useState(initialEvents[0]?.id || "");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
+  const [managedParticipant, setManagedParticipant] = useState<Participant | null>(null);
+  const [managedRegistrationId, setManagedRegistrationId] = useState("");
+  const [targetCategoryId, setTargetCategoryId] = useState("");
+  const [manageError, setManageError] = useState("");
+  const [manageAction, setManageAction] = useState<"move" | "delete" | "">("");
+  const [deleteConfirmation, setDeleteConfirmation] = useState(false);
 
   const event = initialEvents.find((item) => item.id === eventId);
   const categories = event?.competitions.flatMap((competition) =>
@@ -76,11 +120,33 @@ export default function ParticipantManager({
     () => participants.filter((item) => item.full_name.toLowerCase().includes(query.toLowerCase())),
     [participants, query],
   );
+  const managedRegistration = managedParticipant?.registrations.find((registration) => registration.id === managedRegistrationId);
+  const managedDetails = managedRegistration ? detailsFor(managedRegistration, initialEvents) : undefined;
+  const availableCategories = managedDetails?.competition?.categories.filter((category) => category.id !== managedRegistration?.category_id) || [];
+
+  function closeManager() {
+    setManagedParticipant(null);
+    setManagedRegistrationId("");
+    setTargetCategoryId("");
+    setManageError("");
+    setManageAction("");
+    setDeleteConfirmation(false);
+  }
+
+  function openManager(participant: Participant) {
+    setManagedParticipant(participant);
+    setManagedRegistrationId(participant.registrations[0]?.id || "");
+    setTargetCategoryId("");
+    setManageError("");
+    setManageAction("");
+    setDeleteConfirmation(false);
+  }
 
   async function submit(eventSubmit: FormEvent<HTMLFormElement>) {
     eventSubmit.preventDefault();
     setLoading(true);
     setError("");
+    setNotice("");
 
     const form = new FormData(eventSubmit.currentTarget);
     const categoryId = String(form.get("category_id") || "");
@@ -147,8 +213,69 @@ export default function ParticipantManager({
       ...items,
       { ...participant, registrations: [registration] } as Participant,
     ].sort((left, right) => left.full_name.localeCompare(right.full_name)));
+    setNotice("Participante cadastrado e inscrito com sucesso.");
     setOpen(false);
     setLoading(false);
+    router.refresh();
+  }
+
+  async function moveRegistration() {
+    if (!managedParticipant || !managedRegistration || !targetCategoryId) {
+      setManageError("Selecione a nova categoria.");
+      return;
+    }
+
+    setManageAction("move");
+    setManageError("");
+    const { error: moveError } = await createClient().rpc("reassign_registration_category", {
+      target_registration: managedRegistration.id,
+      target_category: targetCategoryId,
+    });
+
+    if (moveError) {
+      setManageError(actionMessage(moveError.message));
+      setManageAction("");
+      return;
+    }
+
+    const targetCategory = availableCategories.find((category) => category.id === targetCategoryId);
+    setParticipants((items) => items.map((participant) => participant.id === managedParticipant.id ? {
+      ...participant,
+      registrations: participant.registrations.map((registration) => registration.id === managedRegistration.id
+        ? { ...registration, category_id: targetCategoryId }
+        : registration),
+    } : participant));
+    setNotice(`${managedParticipant.full_name} foi movido${targetCategory ? ` para ${targetCategory.name}` : " para a nova categoria"}. A fila e os juízes serão atualizados automaticamente.`);
+    closeManager();
+    router.refresh();
+  }
+
+  async function deleteRegistration() {
+    if (!managedParticipant || !managedRegistration) return;
+
+    setManageAction("delete");
+    setManageError("");
+    const { data, error: deleteError } = await createClient().rpc("delete_event_registration", {
+      target_registration: managedRegistration.id,
+    });
+
+    if (deleteError) {
+      setManageError(actionMessage(deleteError.message));
+      setManageAction("");
+      return;
+    }
+
+    const participantDeleted = Boolean((data as { participant_deleted?: boolean } | null)?.participant_deleted);
+    setParticipants((items) => items.flatMap((participant) => {
+      if (participant.id !== managedParticipant.id) return [participant];
+      const registrations = participant.registrations.filter((registration) => registration.id !== managedRegistration.id);
+      return registrations.length ? [{ ...participant, registrations }] : [];
+    }));
+    setNotice(participantDeleted
+      ? `${managedParticipant.full_name} e sua única inscrição foram excluídos.`
+      : `A inscrição de ${managedParticipant.full_name} foi excluída. As demais inscrições foram preservadas.`);
+    closeManager();
+    router.refresh();
   }
 
   return (
@@ -161,17 +288,22 @@ export default function ParticipantManager({
         <button className="primary" onClick={() => setOpen(true)}><Plus />Novo participante</button>
       </div>
 
+      {notice && <div className="login-success participant-notice" role="status">{notice}</div>}
+
       {filtered.length ? (
         <div className="participant-table">
-          <div className="table-head"><span>Participante</span><span>Idade</span><span>Inscrições</span><span>Status</span></div>
+          <div className="table-head"><span>Participante</span><span>Categoria</span><span>Idade</span><span>Inscrições</span><span>Status</span><span>Ações</span></div>
           {filtered.map((participant) => {
             const age = registrationAge(participant);
+            const category = categoriesLabel(participant, initialEvents);
             return (
               <article key={participant.id}>
-                <div><span className="person-dot"><UserRound /></span><strong>{participant.full_name}</strong></div>
-                <span>{age ? ageLabel(age) : "—"}</span>
-                <span>{participant.registrations.length}</span>
-                <b>Pendente</b>
+                <div className="participant-person"><span className="person-dot"><UserRound /></span><strong>{participant.full_name}</strong></div>
+                <span className="participant-category" title={category}>{category}</span>
+                <span className="participant-age">{age ? ageLabel(age) : "—"}</span>
+                <span className="participant-count">{participant.registrations.length}</span>
+                <b className="participant-status">Pendente</b>
+                <button className="participant-manage" type="button" onClick={() => openManager(participant)} disabled={!participant.registrations.length}><Pencil />Gerenciar</button>
               </article>
             );
           })}
@@ -207,6 +339,62 @@ export default function ParticipantManager({
             {error && <div className="form-error">{error}</div>}
             <div className="modal-actions"><button type="button" className="secondary" onClick={() => setOpen(false)}>Cancelar</button><button className="primary" disabled={loading}>{loading ? "Salvando..." : "Cadastrar e inscrever"}</button></div>
           </form>
+        </div>
+      )}
+
+      {managedParticipant && (
+        <div className="modal-wrap">
+          <button className="backdrop" onClick={closeManager} aria-label="Fechar" />
+          <section className="modal category-modal participant-manager-modal" role="dialog" aria-modal="true" aria-labelledby="manage-participant-title">
+            <button type="button" className="modal-x" onClick={closeManager}><X /></button>
+            <span className="eyebrow">GESTÃO DE INSCRIÇÃO</span>
+            <h2 id="manage-participant-title">{managedParticipant.full_name}</h2>
+            <p>Altere a categoria antes do início da avaliação ou exclua a inscrição do evento com segurança.</p>
+
+            <div className="participant-management-summary">
+              <label>Inscrição do participante
+                <select value={managedRegistrationId} onChange={(eventChange) => {
+                  setManagedRegistrationId(eventChange.target.value);
+                  setTargetCategoryId("");
+                  setManageError("");
+                  setDeleteConfirmation(false);
+                }}>
+                  {managedParticipant.registrations.map((registration) => <option value={registration.id} key={registration.id}>{registrationLabel(detailsFor(registration, initialEvents))}</option>)}
+                </select>
+              </label>
+              {managedDetails && <p><b>Categoria atual:</b> {managedDetails.category?.name || "Não identificada"}</p>}
+            </div>
+
+            <section className="participant-action-card">
+              <span className="eyebrow">REALOCAR</span>
+              <h3>Mover para outra categoria</h3>
+              <p>A ficha seguirá para a nova categoria e ficará disponível para os juízes designados a ela.</p>
+              <label>Nova categoria
+                <select value={targetCategoryId} onChange={(eventChange) => { setTargetCategoryId(eventChange.target.value); setManageError(""); }} disabled={!availableCategories.length || Boolean(manageAction)}>
+                  <option value="">Selecione...</option>
+                  {availableCategories.map((category) => <option value={category.id} key={category.id}>{category.name}</option>)}
+                </select>
+              </label>
+              {!availableCategories.length && <small>Não há outra categoria disponível nesta competição.</small>}
+              <button className="primary" type="button" disabled={!targetCategoryId || Boolean(manageAction)} onClick={() => void moveRegistration()}><ArrowRightLeft />{manageAction === "move" ? "Movendo..." : "Mover participante"}</button>
+            </section>
+
+            <section className="participant-action-card participant-danger-card">
+              <span className="eyebrow">EXCLUSÃO</span>
+              <h3>Excluir inscrição</h3>
+              <p>{managedParticipant.registrations.length === 1 ? "Esta é a única inscrição do participante; o cadastro também será removido." : "As outras inscrições deste participante serão preservadas."}</p>
+              {!deleteConfirmation ? (
+                <button className="danger-button" type="button" disabled={Boolean(manageAction)} onClick={() => setDeleteConfirmation(true)}><Trash2 />Excluir esta inscrição</button>
+              ) : (
+                <div className="delete-confirmation">
+                  <p><AlertTriangle />Confirme a exclusão. Essa ação não poderá ser desfeita.</p>
+                  <div><button className="secondary" type="button" disabled={manageAction === "delete"} onClick={() => setDeleteConfirmation(false)}>Cancelar</button><button className="danger-button" type="button" disabled={Boolean(manageAction)} onClick={() => void deleteRegistration()}><Trash2 />{manageAction === "delete" ? "Excluindo..." : "Confirmar exclusão"}</button></div>
+                </div>
+              )}
+            </section>
+
+            {manageError && <div className="form-error">{manageError}</div>}
+          </section>
         </div>
       )}
     </section>
