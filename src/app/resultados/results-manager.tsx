@@ -4,10 +4,11 @@ import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { Award, Check, Music2, Plus, Send, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { participantName as nameForParticipant, type ParticipantRelation } from "@/lib/participant-relation";
 
 type Category = { id: string; name: string };
 type EventItem = { id: string; name: string; competitions: Array<{ id: string; name: string; model: "digital_flags" | "sum_score"; categories: Category[] }> };
-type Registration = { id: string; event_id: string; category_id: string; participants: { full_name: string }[] | null };
+type Registration = { id: string; event_id: string; category_id: string; participants: ParticipantRelation };
 type Result = { id: string; category_id: string; registration_id: string; position: number | null; total: number | null; published_at: string | null; homologated_at: string | null };
 
 export default function ResultsManager({ initialEvents, initialRegistrations, initialResults }: { initialEvents: EventItem[]; initialRegistrations: Registration[]; initialResults: Result[] }) {
@@ -24,7 +25,7 @@ export default function ResultsManager({ initialEvents, initialRegistrations, in
   const isScoring = activeCategory?.model === "sum_score";
   const registrations = initialRegistrations.filter((item) => item.event_id === eventId && item.category_id === currentCategoryId);
   const categoryResults = results.filter((item) => item.category_id === currentCategoryId).sort((a, b) => (a.position || 999) - (b.position || 999));
-  const participantName = (registrationId: string) => initialRegistrations.find((item) => item.id === registrationId)?.participants?.[0]?.full_name || "Participante";
+  const participantName = (registrationId: string) => nameForParticipant(initialRegistrations.find((item) => item.id === registrationId)?.participants || null);
   const published = categoryResults.length > 0 && categoryResults.every((item) => item.published_at);
 
   async function saveResult(eventSubmit: FormEvent<HTMLFormElement>) {

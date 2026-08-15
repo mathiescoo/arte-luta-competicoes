@@ -3,9 +3,10 @@
 import { useMemo, useState } from "react";
 import { Check, RefreshCw, Scale, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { participantName, type ParticipantRelation } from "@/lib/participant-relation";
 
 type Match = { id: string; category_id: string; ring_id: string; blue_registration_id: string; green_registration_id: string; status: string; phase: string; winner_registration_id: string | null };
-type Registration = { id: string; participants: { full_name: string }[] | null };
+type Registration = { id: string; participants: ParticipantRelation };
 type Vote = { match_id: string; judge_id: string };
 type Assignment = { event_id: string; competition_id: string; category_id: string | null; ring_id: string | null; judge_id: string; active: boolean };
 type Event = { id: string; competitions: Array<{ id: string; model: "digital_flags" | "sum_score"; categories: Array<{ id: string }> }> };
@@ -31,7 +32,7 @@ export default function VoteMonitor({ initialEvents, initialMatches, initialRegi
     return map;
   }, [initialEvents]);
 
-  const person = (id: string) => initialRegistrations.find((item) => item.id === id)?.participants?.[0]?.full_name || "Participante";
+  const person = (id: string) => participantName(initialRegistrations.find((item) => item.id === id)?.participants || null);
   const activeMatches = matches.filter((item) => item.status === "live");
 
   function assignedJudgeCount(match: Match) {

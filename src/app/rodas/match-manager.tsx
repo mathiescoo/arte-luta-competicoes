@@ -3,9 +3,10 @@
 import { FormEvent, useState } from "react";
 import { Play, Plus, Scale, Trophy, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { participantName, type ParticipantRelation } from "@/lib/participant-relation";
 
 type EventItem = { id: string; name: string; rings: Array<{ id: string; name: string }>; competitions: Array<{ id: string; name: string; model: "digital_flags" | "sum_score"; categories: Array<{ id: string; name: string }> }> };
-type Registration = { id: string; event_id: string; category_id: string; participants: { full_name: string }[] | null };
+type Registration = { id: string; event_id: string; category_id: string; participants: ParticipantRelation };
 type Match = { id: string; category_id: string; ring_id: string; blue_registration_id: string; green_registration_id: string; phase: string; status: string; winner_registration_id: string | null; started_at: string | null; finished_at: string | null };
 
 export default function MatchManager({ initialEvents, initialRegistrations, initialMatches }: { initialEvents: EventItem[]; initialRegistrations: Registration[]; initialMatches: Match[] }) {
@@ -20,7 +21,7 @@ export default function MatchManager({ initialEvents, initialRegistrations, init
   const activeCategory = categoryId || categories[0]?.id || "";
   const registrations = initialRegistrations.filter((item) => item.event_id === eventId && item.category_id === activeCategory);
   const categoryMatches = matches.filter((item) => item.category_id === activeCategory);
-  const person = (registrationId: string) => initialRegistrations.find((item) => item.id === registrationId)?.participants?.[0]?.full_name || "Participante";
+  const person = (registrationId: string) => participantName(initialRegistrations.find((item) => item.id === registrationId)?.participants || null);
 
   async function createMatch(eventSubmit: FormEvent<HTMLFormElement>) {
     eventSubmit.preventDefault();
