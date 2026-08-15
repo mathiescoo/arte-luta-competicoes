@@ -5,8 +5,10 @@ import {
   Award,
   Check,
   ClipboardList,
+  Clock,
   LoaderCircle,
   Music2,
+  Pause,
   PencilLine,
   Play,
   Plus,
@@ -45,6 +47,10 @@ type Presentation = {
   status: "waiting" | "live" | "finished";
   submitted_scorecards: number;
   total_score: number | null;
+  timer_duration_seconds: number;
+  timer_state: "idle" | "running" | "paused";
+  timer_ends_at: string | null;
+  timer_remaining_seconds: number | null;
 };
 
 type ScoringCategory = {
@@ -106,6 +112,8 @@ const presentationStatus: Record<Presentation["status"], string> = {
   finished: "Concluída",
 };
 
+const DEFAULT_TIMER_SECONDS = 4 * 60;
+
 function messageFrom(error: { message?: string } | null, fallback: string) {
   const message = error?.message || fallback;
   if (/assign at least (?:one|three) active judges?/i.test(message)) return "Atribua pelo menos 1 juiz ativo a esta categoria para iniciar a avaliação.";
@@ -121,6 +129,11 @@ function messageFrom(error: { message?: string } | null, fallback: string) {
 function totalLabel(total: number | null) {
   if (total === null || Number.isNaN(Number(total))) return "Aguardando notas";
   return `${Number(total).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} pontos`;
+}
+
+function clockLabel(value: number | null | undefined) {
+  const seconds = Math.max(0, Math.round(Number(value ?? 0)));
+  return `${Math.floor(seconds / 60).toString().padStart(2, "0")}:${(seconds % 60).toString().padStart(2, "0")}`;
 }
 
 function dateLabel(value: string | null) {
@@ -154,6 +167,10 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
   const [criteriaDraft, setCriteriaDraft] = useState<CriterionDraft[]>(defaultCriteria);
   const [restartTarget, setRestartTarget] = useState<Presentation | null>(null);
   const [restartError, setRestartError] = useState("");
+  const [timerTarget, setTimerTarget] = useState<Presentation | null>(null);
+  const [timerMinutes, setTimerMinutes] = useState("4");
+  const [timerSeconds, setTimerSeconds] = useState("0");
+  const [timerError, setTimerError] = useState("");
 
   const loadWorkspace = useCallback(async (eventId: string) => {
     if (!eventId) {
@@ -347,6 +364,71 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
     setWorking("");
   }
 
+  function openTimerDialog(presentation: Presentation) {
+    const duration = Number(presentation.timer_duration_seconds || DEFAULT_TIMER_SECONDS);
+    setTimerMinutes(String(Math.floor(duration / 60)));
+    setTimerSeconds(String(duration % 60));
+    setTimerError("");
+    setError("");
+    setNotice("");
+    setTimerTarget(presentation);
+  }
+
+  async function managePresentationTimer(presentation: Presentation, action: "pause" | "resume" | "restart") {
+    const workKey = `timer-${presentation.id}`;
+    setWorking(workKey);
+    setError("");
+    const { error: timerRequestError } = await createClient().rpc("manage_scoring_presentation_timer", {
+      target_presentation: presentation.id,
+      action,
+    });
+    if (timerRequestError) {
+      setError(messageFrom(timerRequestError, "Não foi possível atualizar o cronômetro."));
+    } else {
+      const notices = {
+        pause: "Cronômetro pausado no telão.",
+        resume: "Cronômetro retomado no telão.",
+        restart: `Cronômetro reiniciado em ${clockLabel(presentation.timer_duration_seconds || DEFAULT_TIMER_SECONDS)}.`,
+      };
+      setNotice(notices[action]);
+      await loadWorkspace(selectedEventId);
+    }
+    setWorking("");
+  }
+
+  async function savePresentationTimer(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!timerTarget) return;
+    const minutes = Number(timerMinutes);
+    const seconds = Number(timerSeconds);
+    const duration = minutes * 60 + seconds;
+    if (!Number.isInteger(minutes) || !Number.isInteger(seconds) || minutes < 0 || seconds < 0 || seconds > 59 || duration < 30 || duration > 3600) {
+      setTimerError("Informe um tempo entre 00:30 e 60:00.");
+      return;
+    }
+
+    const workKey = `timer-${timerTarget.id}`;
+    setWorking(workKey);
+    setTimerError("");
+    const { error: timerRequestError } = await createClient().rpc("manage_scoring_presentation_timer", {
+      target_presentation: timerTarget.id,
+      action: "set_duration",
+      duration_seconds: duration,
+    });
+    if (timerRequestError) {
+      setTimerError(messageFrom(timerRequestError, "Não foi possível salvar o tempo."));
+    } else {
+      setTimerTarget(null);
+      setNotice(timerTarget.status === "live"
+        ? timerTarget.timer_state === "paused"
+          ? `Tempo ajustado para ${clockLabel(duration)}. O cronômetro continua pausado.`
+          : `Tempo ajustado para ${clockLabel(duration)} e cronômetro reiniciado.`
+        : `Tempo de ${clockLabel(duration)} definido para esta apresentação.`);
+      await loadWorkspace(selectedEventId);
+    }
+    setWorking("");
+  }
+
   async function generateResults(category: ScoringCategory) {
     setWorking(`results-${category.id}`);
     setError("");
@@ -503,11 +585,14 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
                             {category.presentations.map((presentation) => {
                               const canFinish = category.active_judges > 0 && presentation.submitted_scorecards >= category.active_judges;
                               const needsRestart = presentation.submitted_scorecards > 0;
+                              const configuredTime = presentation.timer_duration_seconds || DEFAULT_TIMER_SECONDS;
+                              const timerIsPaused = presentation.timer_state === "paused";
                               return (
                                 <li key={presentation.id}>
                                   <div className={styles.queueNumber}>{presentation.sort_order}</div>
                                   <div className={`${styles.presentationName} ${responsiveStyles.presentationName}`}>
                                     <strong>{presentation.participant_name}</strong>
+                                    <span className={controls.timerSummary}>Tempo: {presentation.status === "live" && timerIsPaused ? `pausado em ${clockLabel(presentation.timer_remaining_seconds)}` : clockLabel(configuredTime)}</span>
                                     <span>{presentation.submitted_scorecards}/{category.active_judges} ficha(s) enviada(s) · {totalLabel(presentation.total_score)}</span>
                                   </div>
                                   <span className={`${styles.status} ${styles[presentation.status]}`}>{presentationStatus[presentation.status]}</span>
@@ -515,8 +600,22 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
                                     {presentation.status === "waiting" && !needsRestart && (
                                       <button disabled={Boolean(working) || category.active_judges < 1} onClick={() => void changePresentationStatus(presentation, "live")}><Play /> Abrir</button>
                                     )}
+                                    {presentation.status === "waiting" && !needsRestart && (
+                                      <button className={controls.timerEditButton} disabled={Boolean(working)} onClick={() => openTimerDialog(presentation)}><Clock /> Ajustar tempo</button>
+                                    )}
                                     {presentation.status === "live" && (
                                       <button disabled={Boolean(working) || !canFinish} onClick={() => void changePresentationStatus(presentation, "finished")}><Check /> Concluir</button>
+                                    )}
+                                    {presentation.status === "live" && (
+                                      <button className={controls.pauseTimerButton} disabled={Boolean(working)} onClick={() => void managePresentationTimer(presentation, timerIsPaused ? "resume" : "pause")}>
+                                        {timerIsPaused ? <Play /> : <Pause />}{timerIsPaused ? "Retomar tempo" : "Pausar tempo"}
+                                      </button>
+                                    )}
+                                    {presentation.status === "live" && (
+                                      <button className={controls.restartTimerButton} disabled={Boolean(working)} onClick={() => void managePresentationTimer(presentation, "restart")}><RotateCcw /> Reiniciar tempo</button>
+                                    )}
+                                    {presentation.status === "live" && (
+                                      <button className={controls.timerEditButton} disabled={Boolean(working)} onClick={() => openTimerDialog(presentation)}><Clock /> Ajustar tempo</button>
                                     )}
                                     {presentation.status === "live" && !needsRestart && (
                                       <button className={controls.cancelPresentationButton} disabled={Boolean(working)} onClick={() => void changePresentationStatus(presentation, "waiting")}><X /> Cancelar abertura</button>
@@ -653,6 +752,35 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
             <div className={`${styles.modalActions} ${responsiveStyles.modalActions}`}>
               <button type="button" className={styles.outlineButton} disabled={criteriaDraft.length >= 12} onClick={() => setCriteriaDraft((items) => [...items, { name: "", description: "", min_score: "0", max_score: "10" }])}><Plus /> Adicionar critério</button>
               <div><button type="button" className={styles.cancelButton} onClick={() => setCriteriaCompetition(null)}>Cancelar</button><button className={styles.primaryButton} disabled={working === "criteria"}>{working === "criteria" ? <LoaderCircle /> : <Check />} Salvar critérios</button></div>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {timerTarget && (
+        <div className={styles.modalLayer} role="dialog" aria-modal="true" aria-labelledby="timer-modal-title">
+          <button className={styles.modalBackdrop} type="button" disabled={working === `timer-${timerTarget.id}`} onClick={() => setTimerTarget(null)} aria-label="Fechar ajuste de tempo" />
+          <form className={`${styles.criteriaModal} ${controls.timerModal} ${responsiveStyles.criteriaModal}`} onSubmit={(event) => void savePresentationTimer(event)}>
+            <div className={styles.modalHeading}>
+              <div>
+                <span className="eyebrow">CRONÔMETRO DA APRESENTAÇÃO</span>
+                <h2 id="timer-modal-title">Ajustar tempo de {timerTarget.participant_name}</h2>
+                <p>O padrão é 4 minutos. Ao alterar o tempo de uma apresentação aberta, a contagem recomeça com o novo valor no telão.</p>
+              </div>
+              <button type="button" className={styles.iconButton} disabled={working === `timer-${timerTarget.id}`} onClick={() => setTimerTarget(null)} aria-label="Fechar"><X /></button>
+            </div>
+            <div className={controls.timerFields}>
+              <label>Minutos<input value={timerMinutes} onChange={(event) => setTimerMinutes(event.target.value)} type="number" min="0" max="60" inputMode="numeric" required autoFocus /></label>
+              <label>Segundos<input value={timerSeconds} onChange={(event) => setTimerSeconds(event.target.value)} type="number" min="0" max="59" inputMode="numeric" required /></label>
+            </div>
+            <p className={controls.timerHint}>Permitido de 00:30 até 60:00. Pausar não encerra a avaliação nem bloqueia os jurados.</p>
+            {timerError && <div className="form-error" role="alert">{timerError}</div>}
+            <div className={styles.modalActions}>
+              <span />
+              <div>
+                <button type="button" className={styles.cancelButton} disabled={working === `timer-${timerTarget.id}`} onClick={() => setTimerTarget(null)}>Cancelar</button>
+                <button className={controls.timerSaveButton} disabled={working === `timer-${timerTarget.id}`}><Clock />{working === `timer-${timerTarget.id}` ? "Salvando..." : "Aplicar tempo"}</button>
+              </div>
             </div>
           </form>
         </div>

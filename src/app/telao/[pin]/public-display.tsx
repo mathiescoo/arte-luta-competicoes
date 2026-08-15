@@ -1,9 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Music2, Radio, Trophy, Users } from "lucide-react";
+import { Clock, Music2, Radio, Trophy, Users } from "lucide-react";
 
 type Board = {
   display_kind?: "match" | "scoring" | "idle";
@@ -29,14 +29,34 @@ type Board = {
   queue_position?: number | null;
   scorecards_received?: number;
   total_score?: number | string | null;
+  timer_duration_seconds?: number | null;
+  timer_state?: "idle" | "running" | "paused" | null;
+  timer_ends_at?: string | null;
+  timer_remaining_seconds?: number | null;
+  server_now?: string | null;
 };
+
+function countdownLabel(value: number) {
+  const seconds = Math.max(0, Math.ceil(value));
+  return `${Math.floor(seconds / 60).toString().padStart(2, "0")}:${(seconds % 60).toString().padStart(2, "0")}`;
+}
 
 export default function PublicDisplay({ board, pin }: { board: Board; pin: string }) {
   const router = useRouter();
+  const [clock, setClock] = useState<{ now: number; serverOffset: number } | null>(null);
   useEffect(() => {
     const timer = window.setInterval(() => router.refresh(), 3500);
     return () => window.clearInterval(timer);
   }, [router]);
+
+  useEffect(() => {
+    const serverNow = Date.parse(board.server_now || "");
+    const timer = window.setInterval(() => {
+      const now = Date.now();
+      setClock({ now, serverOffset: Number.isFinite(serverNow) ? now - serverNow : 0 });
+    }, 250);
+    return () => window.clearInterval(timer);
+  }, [board.server_now]);
 
   const live = board.match_status === "live";
   const finished = board.match_status === "finished";
@@ -50,6 +70,15 @@ export default function PublicDisplay({ board, pin }: { board: Board; pin: strin
   const scoreTotal = board.total_score === null || board.total_score === undefined || Number.isNaN(Number(board.total_score))
     ? null
     : Number(board.total_score).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const timerDuration = Math.max(30, Number(board.timer_duration_seconds || 4 * 60));
+  const timerState = board.timer_state || "running";
+  const timerEndsAt = Date.parse(board.timer_ends_at || "");
+  const storedTimerRemaining = Math.max(0, Number(board.timer_remaining_seconds ?? timerDuration));
+  const syncedNow = clock === null ? null : clock.now - clock.serverOffset;
+  const timerRemaining = timerState === "paused" || !Number.isFinite(timerEndsAt) || syncedNow === null
+    ? storedTimerRemaining
+    : Math.max(0, Math.ceil((timerEndsAt - syncedNow) / 1000));
+  const timerExpired = timerRemaining <= 0;
 
   return (
     <main className="public-display public-display--fullscreen">
@@ -63,6 +92,12 @@ export default function PublicDisplay({ board, pin }: { board: Board; pin: strin
         <section className="display-scoring">
           <div className="display-scoring-status"><Music2 />{scoringLive ? "APRESENTAÇÃO EM AVALIAÇÃO" : "ÚLTIMA APRESENTAÇÃO CONCLUÍDA"}</div>
           <p className="display-scoring-category">{[board.competition_name, board.category_name].filter(Boolean).join(" · ") || "Cante Comigo Capoeira"}</p>
+          {scoringLive && (
+            <div className={`display-scoring-timer ${timerExpired ? "is-expired" : ""}`} aria-label={`Tempo ${timerExpired ? "encerrado" : timerState === "paused" ? "pausado" : "restante"}: ${countdownLabel(timerRemaining)}`}>
+              <span><Clock />{timerExpired ? "TEMPO ENCERRADO" : timerState === "paused" ? "TEMPO PAUSADO" : "TEMPO RESTANTE"}</span>
+              <b>{countdownLabel(timerRemaining)}</b>
+            </div>
+          )}
           <h2>{board.participant_name}</h2>
           {scoringFinished ? (
             <div className="display-scoring-final"><Trophy /><span>PONTUAÇÃO FINAL</span><b>{scoreTotal ?? "—"}</b><small>PONTOS</small></div>

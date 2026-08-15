@@ -72,6 +72,36 @@
   letter-spacing: .04em;
 }
 
+.display-scoring-timer {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  margin: clamp(8px, 1.4vh, 14px) 0;
+}
+
+.display-scoring-timer span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #e8c46b;
+  font-size: clamp(11px, 1.2vw, 14px);
+  font-weight: 700;
+  letter-spacing: .15em;
+}
+
+.display-scoring-timer span svg { width: 17px; }
+
+.display-scoring-timer b {
+  color: #fff;
+  font: 700 clamp(46px, 6.2vw, 88px)/.88 Arial, sans-serif;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.04em;
+  text-shadow: 0 7px 22px rgba(229, 170, 39, .2);
+}
+
+.display-scoring-timer.is-expired span,
+.display-scoring-timer.is-expired b { color: #ff7b6f; }
+
 .display-scoring h2 {
   max-width: min(980px, 100%);
   margin: 0 auto;
@@ -190,6 +220,14 @@
 
   .display-scoring h2 {
     font-size: clamp(30px, 4.7vw, 58px);
+  }
+
+  .display-scoring-timer {
+    margin-block: 7px;
+  }
+
+  .display-scoring-timer b {
+    font-size: clamp(40px, 5.4vw, 68px);
   }
 
   .display-scoring-info {
