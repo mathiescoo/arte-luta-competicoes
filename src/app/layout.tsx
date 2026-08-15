@@ -14,7 +14,6 @@ import "./matches.css";
 import "./judge-voting.css";
 import "./vote-monitor.css";
 import "./public-display.css";
-import "./public-display-musicality.css";
 import "./checkin.css";
 import "./event-settings.css";
 import "./settings-help.css";
@@ -26,6 +25,7 @@ import "./production-layout.css";
 import "./brand-system.css";
 import "./responsive-system.css";
 import "./responsive-experience.css";
+import "./public-display-musicality.css";
 
 export const metadata: Metadata = {
   title: "Arena Arte Luta",

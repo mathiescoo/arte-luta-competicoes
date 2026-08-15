@@ -52,7 +52,7 @@ export default function PublicDisplay({ board, pin }: { board: Board; pin: strin
     : Number(board.total_score).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
-    <main className="public-display">
+    <main className="public-display public-display--fullscreen">
       <header>
         <Image className="display-logo-image" src="/brand/capoeira-arte-luta-brasil.png" alt="Logo Capoeira Arte-Luta Brasil" width={1536} height={1024} priority />
         <div className="display-event-title"><span>{isScoring ? "MUSICALIDADE AO VIVO" : "CAMPEONATO AO VIVO"}</span><h1>{board.event_name}</h1></div>
@@ -64,15 +64,17 @@ export default function PublicDisplay({ board, pin }: { board: Board; pin: strin
           <div className="display-scoring-status"><Music2 />{scoringLive ? "APRESENTAÇÃO EM AVALIAÇÃO" : "ÚLTIMA APRESENTAÇÃO CONCLUÍDA"}</div>
           <p className="display-scoring-category">{[board.competition_name, board.category_name].filter(Boolean).join(" · ") || "Cante Comigo Capoeira"}</p>
           <h2>{board.participant_name}</h2>
-          <div className="display-scoring-info">
-            <div><span>IDADE</span><strong>{board.participant_age ? `${board.participant_age} anos` : "Não informada"}</strong></div>
-            <div><span>MÚSICA</span><strong>{board.song_title || "Música não informada"}</strong></div>
-            <div><span>AUTOR / INTÉRPRETE</span><strong>{board.song_author || "Autor não informado"}</strong></div>
-          </div>
           {scoringFinished ? (
-            <div className="display-scoring-total"><Trophy /><span>Avaliação concluída</span>{scoreTotal && <b>{scoreTotal} pontos</b>}</div>
+            <div className="display-scoring-final"><Trophy /><span>PONTUAÇÃO FINAL</span><b>{scoreTotal ?? "—"}</b><small>PONTOS</small></div>
           ) : (
-            <p className="display-scoring-progress"><Users />Notas em andamento{required ? ` · ${scorecardsReceived} de ${required} fichas recebidas` : ""}</p>
+            <>
+              <div className="display-scoring-info">
+                <div><span>IDADE</span><strong>{board.participant_age ? `${board.participant_age} anos` : "Não informada"}</strong></div>
+                <div><span>MÚSICA</span><strong>{board.song_title || "Música não informada"}</strong></div>
+                <div><span>AUTOR / INTÉRPRETE</span><strong>{board.song_author || "Autor não informado"}</strong></div>
+              </div>
+              <p className="display-scoring-progress"><Users />Notas em andamento{required ? ` · ${scorecardsReceived} de ${required} fichas recebidas` : ""}</p>
+            </>
           )}
         </section>
       ) : hasMatch ? (
