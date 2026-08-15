@@ -14,6 +14,7 @@ import "./matches.css";
 import "./judge-voting.css";
 import "./vote-monitor.css";
 import "./public-display.css";
+import "./public-display-musicality.css";
 import "./checkin.css";
 import "./event-settings.css";
 import "./settings-help.css";
