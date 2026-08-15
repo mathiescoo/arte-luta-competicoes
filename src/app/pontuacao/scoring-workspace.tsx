@@ -15,6 +15,7 @@ import {
   RefreshCw,
   RotateCcw,
   Send,
+  Shuffle,
   Trophy,
   X,
 } from "lucide-react";
@@ -49,6 +50,7 @@ type Presentation = {
   total_score: number | null;
   timer_duration_seconds: number;
   timer_state: "idle" | "running" | "paused";
+  timer_started_at: string | null;
   timer_ends_at: string | null;
   timer_remaining_seconds: number | null;
 };
@@ -123,6 +125,8 @@ function messageFrom(error: { message?: string } | null, fallback: string) {
   if (/published results/i.test(message)) return "Esta categoria já possui resultados publicados e não pode ser reiniciada.";
   if (/judge assignments are locked/i.test(message)) return "A escala de jurados desta categoria já começou. Para alterá-la, reinicie as avaliações concluídas e deixe todas na fila.";
   if (/return the presentation to the queue/i.test(message)) return "Volte a apresentação para a fila antes de abri-la novamente.";
+  if (/order can only be drawn before the first presentation is opened/i.test(message)) return "A ordem só pode ser sorteada antes de anunciar a primeira pessoa.";
+  if (/generate the presentation queue before drawing/i.test(message)) return "Gere a fila antes de sortear a ordem de apresentação.";
   return message;
 }
 
@@ -171,6 +175,8 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
   const [timerMinutes, setTimerMinutes] = useState("4");
   const [timerSeconds, setTimerSeconds] = useState("0");
   const [timerError, setTimerError] = useState("");
+  const [shuffleTarget, setShuffleTarget] = useState<ScoringCategory | null>(null);
+  const [shuffleError, setShuffleError] = useState("");
 
   const loadWorkspace = useCallback(async (eventId: string) => {
     if (!eventId) {
@@ -324,15 +330,43 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
   async function changePresentationStatus(presentation: Presentation, status: Presentation["status"]) {
     setWorking(`status-${presentation.id}`);
     setError("");
-    const { error: statusError } = await createClient().rpc("set_scoring_presentation_status", {
-      target_presentation: presentation.id,
-      next_status: status,
-    });
+    const { error: statusError } = status === "live"
+      ? await createClient().rpc("open_scoring_presentation", { target_presentation: presentation.id })
+      : await createClient().rpc("set_scoring_presentation_status", {
+        target_presentation: presentation.id,
+        next_status: status,
+      });
     if (statusError) {
       setError(messageFrom(statusError, "Não foi possível atualizar a apresentação."));
     } else {
-      setNotice(status === "live" ? "Apresentação aberta para os juízes." : status === "finished" ? "Apresentação concluída." : "Abertura cancelada. A apresentação voltou para a fila sem apagar notas.");
+      setNotice(status === "live" ? "Pessoa anunciada no telão. Clique em “Iniciar tempo” quando ela começar a cantar." : status === "finished" ? "Apresentação concluída." : "Abertura cancelada. A apresentação voltou para a fila sem apagar notas.");
       await Promise.all([loadWorkspace(selectedEventId), canJudge ? loadJudgeQueue() : Promise.resolve()]);
+    }
+    setWorking("");
+  }
+
+  function openShuffleDialog(category: ScoringCategory) {
+    setShuffleError("");
+    setError("");
+    setNotice("");
+    setShuffleTarget(category);
+  }
+
+  async function shufflePresentations() {
+    if (!shuffleTarget) return;
+    const workKey = `shuffle-${shuffleTarget.id}`;
+    setWorking(workKey);
+    setShuffleError("");
+    const { data, error: shuffleRequestError } = await createClient().rpc("shuffle_scoring_presentations", {
+      target_category: shuffleTarget.id,
+    });
+    if (shuffleRequestError) {
+      setShuffleError(messageFrom(shuffleRequestError, "Não foi possível sortear a ordem de apresentação."));
+    } else {
+      const total = Number(data || 0);
+      setShuffleTarget(null);
+      setNotice(`Ordem sorteada com ${total} participante(s), sem repetição. A sequência fica bloqueada após anunciar a primeira pessoa.`);
+      await loadWorkspace(selectedEventId);
     }
     setWorking("");
   }
@@ -387,7 +421,7 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
     } else {
       const notices = {
         pause: "Cronômetro pausado no telão.",
-        resume: "Cronômetro retomado no telão.",
+        resume: presentation.timer_started_at ? "Cronômetro retomado no telão." : "Cronômetro iniciado no telão.",
         restart: `Cronômetro reiniciado em ${clockLabel(presentation.timer_duration_seconds || DEFAULT_TIMER_SECONDS)}.`,
       };
       setNotice(notices[action]);
@@ -564,6 +598,14 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
                           </div>
                           <div className={`${styles.categoryActions} ${responsiveStyles.categoryActions}`}>
                             <button
+                              className={`${styles.outlineButton} ${controls.shuffleButton} ${responsiveStyles.outlineButton}`}
+                              disabled={!category.presentations.length || category.presentations.some((presentation) => presentation.status !== "waiting" || presentation.submitted_scorecards > 0) || Boolean(working)}
+                              onClick={() => openShuffleDialog(category)}
+                              title="Sorteia uma sequência única antes de iniciar a primeira apresentação"
+                            >
+                              <Shuffle /> Sortear ordem
+                            </button>
+                            <button
                               className={`${styles.outlineButton} ${responsiveStyles.outlineButton}`}
                               disabled={!competition.criteria.length || !category.registration_count || working === `presentations-${category.id}`}
                               onClick={() => void generatePresentations(category)}
@@ -587,18 +629,27 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
                               const needsRestart = presentation.submitted_scorecards > 0;
                               const configuredTime = presentation.timer_duration_seconds || DEFAULT_TIMER_SECONDS;
                               const timerIsPaused = presentation.timer_state === "paused";
+                              const timerWaitingToStart = timerIsPaused && !presentation.timer_started_at;
                               return (
                                 <li key={presentation.id}>
                                   <div className={styles.queueNumber}>{presentation.sort_order}</div>
                                   <div className={`${styles.presentationName} ${responsiveStyles.presentationName}`}>
                                     <strong>{presentation.participant_name}</strong>
-                                    <span className={controls.timerSummary}>Tempo: {presentation.status === "live" && timerIsPaused ? `pausado em ${clockLabel(presentation.timer_remaining_seconds)}` : clockLabel(configuredTime)}</span>
+                                    <span className={controls.timerSummary}>
+                                      {presentation.status === "live" && timerWaitingToStart
+                                        ? `Pronto para iniciar · ${clockLabel(presentation.timer_remaining_seconds ?? configuredTime)}`
+                                        : presentation.status === "live" && timerIsPaused
+                                          ? `Tempo pausado · ${clockLabel(presentation.timer_remaining_seconds)}`
+                                          : presentation.status === "live"
+                                            ? "Cronômetro em andamento"
+                                            : `Tempo: ${clockLabel(configuredTime)}`}
+                                    </span>
                                     <span>{presentation.submitted_scorecards}/{category.active_judges} ficha(s) enviada(s) · {totalLabel(presentation.total_score)}</span>
                                   </div>
                                   <span className={`${styles.status} ${styles[presentation.status]}`}>{presentationStatus[presentation.status]}</span>
                                   <div className={`${styles.presentationActions} ${controls.presentationActions} ${responsiveStyles.presentationActions}`}>
                                     {presentation.status === "waiting" && !needsRestart && (
-                                      <button disabled={Boolean(working) || category.active_judges < 1} onClick={() => void changePresentationStatus(presentation, "live")}><Play /> Abrir</button>
+                                      <button disabled={Boolean(working) || category.active_judges < 1} onClick={() => void changePresentationStatus(presentation, "live")}><Play /> Chamar no telão</button>
                                     )}
                                     {presentation.status === "waiting" && !needsRestart && (
                                       <button className={controls.timerEditButton} disabled={Boolean(working)} onClick={() => openTimerDialog(presentation)}><Clock /> Ajustar tempo</button>
@@ -608,7 +659,7 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
                                     )}
                                     {presentation.status === "live" && (
                                       <button className={controls.pauseTimerButton} disabled={Boolean(working)} onClick={() => void managePresentationTimer(presentation, timerIsPaused ? "resume" : "pause")}>
-                                        {timerIsPaused ? <Play /> : <Pause />}{timerIsPaused ? "Retomar tempo" : "Pausar tempo"}
+                                        {timerIsPaused ? <Play /> : <Pause />}{timerWaitingToStart ? "Iniciar tempo" : timerIsPaused ? "Retomar tempo" : "Pausar tempo"}
                                       </button>
                                     )}
                                     {presentation.status === "live" && (
@@ -754,6 +805,34 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
               <div><button type="button" className={styles.cancelButton} onClick={() => setCriteriaCompetition(null)}>Cancelar</button><button className={styles.primaryButton} disabled={working === "criteria"}>{working === "criteria" ? <LoaderCircle /> : <Check />} Salvar critérios</button></div>
             </div>
           </form>
+        </div>
+      )}
+
+      {shuffleTarget && (
+        <div className={styles.modalLayer} role="dialog" aria-modal="true" aria-labelledby="shuffle-modal-title">
+          <button className={styles.modalBackdrop} type="button" disabled={working === `shuffle-${shuffleTarget.id}`} onClick={() => setShuffleTarget(null)} aria-label="Fechar confirmação de sorteio" />
+          <section className={`${styles.criteriaModal} ${controls.shuffleModal} ${responsiveStyles.criteriaModal}`}>
+            <div className={styles.modalHeading}>
+              <div>
+                <span className="eyebrow">ORDEM DE APRESENTAÇÃO</span>
+                <h2 id="shuffle-modal-title">Sortear {shuffleTarget.name}?</h2>
+                <p>Será criada uma sequência única para toda a categoria, do primeiro ao último cantor.</p>
+              </div>
+              <button type="button" className={styles.iconButton} disabled={working === `shuffle-${shuffleTarget.id}`} onClick={() => setShuffleTarget(null)} aria-label="Fechar"><X /></button>
+            </div>
+            <div className={controls.shuffleSummary}>
+              <strong>{shuffleTarget.presentations.length} participante(s) entrarão no sorteio.</strong>
+              <span>Ninguém será repetido. Depois que a primeira pessoa for anunciada no telão, a ordem ficará bloqueada para manter o sorteio transparente.</span>
+            </div>
+            {shuffleError && <div className="form-error" role="alert">{shuffleError}</div>}
+            <div className={styles.modalActions}>
+              <span />
+              <div>
+                <button type="button" className={styles.cancelButton} disabled={working === `shuffle-${shuffleTarget.id}`} onClick={() => setShuffleTarget(null)}>Voltar</button>
+                <button type="button" className={controls.shuffleConfirmButton} disabled={working === `shuffle-${shuffleTarget.id}`} onClick={() => void shufflePresentations()}><Shuffle />{working === `shuffle-${shuffleTarget.id}` ? "Sorteando..." : "Sortear agora"}</button>
+              </div>
+            </div>
+          </section>
         </div>
       )}
 

@@ -35,6 +35,12 @@
   color: #214f91 !important;
 }
 
+.shuffleButton {
+  border-color: #aebfe0 !important;
+  background: #f2f6ff !important;
+  color: #244b8b !important;
+}
+
 .pauseTimerButton {
   border-color: #d8c38a !important;
   background: #fff9e8 !important;
@@ -58,6 +64,8 @@
 }
 
 .restartModal { width: min(610px, 100%); }
+
+.shuffleModal { width: min(610px, 100%); }
 
 .timerModal { width: min(560px, 100%); }
 
@@ -128,6 +136,40 @@
 }
 
 .restartSummary strong { font-size: 13px; }
+
+.shuffleSummary {
+  display: grid;
+  gap: 6px;
+  margin-top: 20px;
+  padding: 14px;
+  border: 1px solid #bdcdea;
+  border-radius: 8px;
+  background: #f3f7ff;
+  color: #244b8b;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.shuffleSummary strong { font-size: 13px; }
+
+.shuffleConfirmButton {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 14px;
+  border: 1px solid #244b8b;
+  border-radius: 7px;
+  background: #244b8b;
+  color: #fff;
+  font: 700 12px Arial, sans-serif;
+  cursor: pointer;
+}
+
+.shuffleConfirmButton:hover:not(:disabled) { background: #193d72; }
+.shuffleConfirmButton:disabled { cursor: not-allowed; opacity: .55; }
+.shuffleConfirmButton svg { width: 16px; }
 
 .dangerButton {
   display: inline-flex;

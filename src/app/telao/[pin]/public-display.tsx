@@ -31,6 +31,7 @@ type Board = {
   total_score?: number | string | null;
   timer_duration_seconds?: number | null;
   timer_state?: "idle" | "running" | "paused" | null;
+  timer_started_at?: string | null;
   timer_ends_at?: string | null;
   timer_remaining_seconds?: number | null;
   server_now?: string | null;
@@ -79,22 +80,23 @@ export default function PublicDisplay({ board, pin }: { board: Board; pin: strin
     ? storedTimerRemaining
     : Math.max(0, Math.ceil((timerEndsAt - syncedNow) / 1000));
   const timerExpired = timerRemaining <= 0;
+  const timerWaitingToStart = timerState === "paused" && !board.timer_started_at;
 
   return (
     <main className="public-display public-display--fullscreen">
       <header>
         <Image className="display-logo-image" src="/brand/capoeira-arte-luta-brasil.png" alt="Logo Capoeira Arte-Luta Brasil" width={1536} height={1024} priority />
         <div className="display-event-title"><span>{isScoring ? "MUSICALIDADE AO VIVO" : "CAMPEONATO AO VIVO"}</span><h1>{board.event_name}</h1></div>
-        <div className="display-session"><Radio /> {isScoring && scoringLive ? "AO VIVO" : live ? "AO VIVO" : "TELÃO"}<small>{isScoring ? board.competition_name || board.session_name : board.ring_name || board.session_name}</small></div>
+        <div className="display-session"><Radio /> {isScoring && scoringLive ? timerWaitingToStart ? "PRÓXIMO" : "AO VIVO" : live ? "AO VIVO" : "TELÃO"}<small>{isScoring ? board.competition_name || board.session_name : board.ring_name || board.session_name}</small></div>
       </header>
 
       {isScoring ? (
         <section className="display-scoring">
-          <div className="display-scoring-status"><Music2 />{scoringLive ? "APRESENTAÇÃO EM AVALIAÇÃO" : "ÚLTIMA APRESENTAÇÃO CONCLUÍDA"}</div>
+          <div className="display-scoring-status"><Music2 />{scoringLive ? timerWaitingToStart ? "PRÓXIMO A CANTAR" : "APRESENTAÇÃO EM AVALIAÇÃO" : "ÚLTIMA APRESENTAÇÃO CONCLUÍDA"}</div>
           <p className="display-scoring-category">{[board.competition_name, board.category_name].filter(Boolean).join(" · ") || "Cante Comigo Capoeira"}</p>
           {scoringLive && (
-            <div className={`display-scoring-timer ${timerExpired ? "is-expired" : ""}`} aria-label={`Tempo ${timerExpired ? "encerrado" : timerState === "paused" ? "pausado" : "restante"}: ${countdownLabel(timerRemaining)}`}>
-              <span><Clock />{timerExpired ? "TEMPO ENCERRADO" : timerState === "paused" ? "TEMPO PAUSADO" : "TEMPO RESTANTE"}</span>
+            <div className={`display-scoring-timer ${timerExpired ? "is-expired" : ""}`} aria-label={`Tempo ${timerExpired ? "encerrado" : timerWaitingToStart ? "aguardando início" : timerState === "paused" ? "pausado" : "restante"}: ${countdownLabel(timerRemaining)}`}>
+              <span><Clock />{timerExpired ? "TEMPO ENCERRADO" : timerWaitingToStart ? "PRONTO PARA CANTAR · AGUARDANDO INÍCIO" : timerState === "paused" ? "TEMPO PAUSADO" : "TEMPO RESTANTE"}</span>
               <b>{countdownLabel(timerRemaining)}</b>
             </div>
           )}
