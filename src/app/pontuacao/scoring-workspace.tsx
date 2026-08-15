@@ -74,6 +74,9 @@ type JudgeQueueItem = {
   presentation_id: string;
   assignment_id: string;
   participant_name: string;
+  participant_age: string | null;
+  song_title: string | null;
+  song_author: string | null;
   sort_order: number;
   status: "live";
   submitted: boolean;
@@ -119,6 +122,11 @@ function dateLabel(value: string | null) {
 function timeLabel(value: string | null) {
   if (!value) return "agora";
   return new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+}
+
+function ageLabel(value: string | null) {
+  if (!value) return "Não informada";
+  return /\bano(?:s)?\b/i.test(value) ? value : `${value} anos`;
 }
 
 export default function ScoringWorkspace({ canManage, canJudge }: { canManage: boolean; canJudge: boolean }) {
@@ -510,6 +518,12 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
                     </div>
                     {item.submitted && <b><Check /> Salvo às {timeLabel(item.submitted_at)}</b>}
                   </div>
+                  <dl className={responsiveStyles.participantBrief} aria-label={`Dados de ${item.participant_name}`}>
+                    <div><dt>Categoria</dt><dd>{item.category_name}</dd></div>
+                    <div><dt>Idade</dt><dd>{ageLabel(item.participant_age)}</dd></div>
+                    <div><dt>Música</dt><dd>{item.song_title || "Não informada"}</dd></div>
+                    <div><dt>Autor da música</dt><dd>{item.song_author || "Não informado"}</dd></div>
+                  </dl>
                   <div className={`${styles.scoreInputs} ${responsiveStyles.scoreInputs}`}>
                     {item.criteria.map((criterion) => {
                       const savedValue = item.scores?.[criterion.id];

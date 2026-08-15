@@ -3,5 +3,58 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import ParticipantManager from "./participant-manager";
 import CsvImporter from "./csv-importer";
-export const dynamic="force-dynamic";
-export default async function ParticipantsPage(){const supabase=await createClient();const {data:claims}=await supabase.auth.getClaims();if(!claims?.claims?.sub)redirect("/entrar");const {data:role}=await supabase.from("user_roles").select("organization_id").eq("user_id",claims.claims.sub).limit(1).single();if(!role)redirect("/painel");const [{data:events},{data:participants}]=await Promise.all([supabase.from("events").select("id,name,competitions(id,name,categories(id,name))").eq("organization_id",role.organization_id).order("created_at",{ascending:false}),supabase.from("participants").select("id,full_name,birth_date,private_data,registrations(id,event_id,category_id,attendance_confirmed,payment_confirmed)").eq("organization_id",role.organization_id).order("full_name")]);return <main className="management-page"><Link href="/painel" className="back-link">← Voltar para visão geral</Link><div className="management-top"><div><span className="eyebrow">GESTÃO</span><h1>Participantes</h1><p>Cadastre atletas e intérpretes e vincule cada inscrição à categoria correta.</p></div><Link className="primary" href="/credenciamento">Check-in do evento</Link></div><div className="participant-import"><CsvImporter organizationId={role.organization_id} events={events||[]}/></div><ParticipantManager organizationId={role.organization_id} initialEvents={events||[]} initialParticipants={participants||[]}/></main>}
+
+export const dynamic = "force-dynamic";
+
+export default async function ParticipantsPage() {
+  const supabase = await createClient();
+  const { data: claims } = await supabase.auth.getClaims();
+  if (!claims?.claims?.sub) redirect("/entrar");
+
+  const { data: role } = await supabase
+    .from("user_roles")
+    .select("organization_id")
+    .eq("user_id", claims.claims.sub)
+    .limit(1)
+    .single();
+  if (!role) redirect("/painel");
+
+  const [{ data: events }, { data: participants }] = await Promise.all([
+    supabase
+      .from("events")
+      .select("id,name,competitions(id,name,categories(id,name))")
+      .eq("organization_id", role.organization_id)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("participants")
+      .select("id,full_name,birth_date,private_data,registrations(id,event_id,category_id,attendance_confirmed,payment_confirmed,data)")
+      .eq("organization_id", role.organization_id)
+      .order("full_name"),
+  ]);
+
+  const participantList = participants || [];
+  const participantManagerKey = participantList.map((participant) => `${participant.id}:${participant.registrations
+    .map((registration) => `${registration.id}:${JSON.stringify(registration.data)}`)
+    .join(",")}`).join("|");
+
+  return (
+    <main className="management-page">
+      <Link href="/painel" className="back-link">← Voltar para visão geral</Link>
+      <div className="management-top">
+        <div>
+          <span className="eyebrow">GESTÃO</span>
+          <h1>Participantes</h1>
+          <p>Cadastre atletas e intérpretes e vincule cada inscrição à categoria correta.</p>
+        </div>
+        <Link className="primary" href="/credenciamento">Check-in do evento</Link>
+      </div>
+      <div className="participant-import"><CsvImporter organizationId={role.organization_id} events={events || []} /></div>
+      <ParticipantManager
+        key={participantManagerKey}
+        organizationId={role.organization_id}
+        initialEvents={events || []}
+        initialParticipants={participantList}
+      />
+    </main>
+  );
+}
