@@ -23,6 +23,7 @@ import { createClient } from "@/lib/supabase/client";
 import styles from "./scoring.module.css";
 import responsiveStyles from "./scoring-responsive.module.css";
 import controls from "./scoring-controls.module.css";
+import AdminScoreEditor from "./admin-score-editor";
 
 type ManageableEvent = {
   id: string;
@@ -127,12 +128,14 @@ function messageFrom(error: { message?: string } | null, fallback: string) {
   if (/return the presentation to the queue/i.test(message)) return "Volte a apresentação para a fila antes de abri-la novamente.";
   if (/order can only be drawn before the first presentation is opened/i.test(message)) return "A ordem só pode ser sorteada antes de anunciar a primeira pessoa.";
   if (/generate the presentation queue before drawing/i.test(message)) return "Gere a fila antes de sortear a ordem de apresentação.";
+  if (/criteria cannot be changed after the first submitted scorecard/i.test(message)) return "Já existem fichas. Marque a confirmação para reiniciar as avaliações e alterar os critérios.";
+  if (/published results prevent changing/i.test(message)) return "Há resultados publicados nesta competição. Não é possível alterar os critérios por este fluxo.";
   return message;
 }
 
 function totalLabel(total: number | null) {
   if (total === null || Number.isNaN(Number(total))) return "Aguardando notas";
-  return `${Number(total).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} pontos`;
+  return `${Number(total).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / 10`;
 }
 
 function clockLabel(value: number | null | undefined) {
@@ -177,6 +180,9 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
   const [timerError, setTimerError] = useState("");
   const [shuffleTarget, setShuffleTarget] = useState<ScoringCategory | null>(null);
   const [shuffleError, setShuffleError] = useState("");
+  const [scoreEditor, setScoreEditor] = useState<{ presentation: Presentation; criteria: Criterion[] } | null>(null);
+  const [criteriaReset, setCriteriaReset] = useState(false);
+  const [criteriaReason, setCriteriaReason] = useState("");
 
   const loadWorkspace = useCallback(async (eventId: string) => {
     if (!eventId) {
@@ -265,6 +271,8 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
     setError("");
     setNotice("");
     setCriteriaCompetition(competition);
+    setCriteriaReset(false);
+    setCriteriaReason("");
     setCriteriaDraft(
       competition.criteria.length
         ? competition.criteria.map((criterion) => ({
@@ -295,7 +303,12 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
     }
     setWorking("criteria");
     setError("");
-    const { error: saveError } = await createClient().rpc("replace_scoring_criteria", {
+    if (criteriaReset && criteriaReason.trim().length < 3) {
+      setError("Informe o motivo da alteração dos critérios.");
+      setWorking("");
+      return;
+    }
+    const payload = {
       target_competition: criteriaCompetition.id,
       criteria: criteriaDraft.map((criterion) => ({
         name: criterion.name.trim(),
@@ -303,7 +316,10 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
         min_score: Number(criterion.min_score),
         max_score: Number(criterion.max_score),
       })),
-    });
+    };
+    const { error: saveError } = criteriaReset
+      ? await createClient().rpc("replace_scoring_criteria_and_reset", { ...payload, reset_reason: criteriaReason.trim(), confirmed: true })
+      : await createClient().rpc("replace_scoring_criteria", payload);
     if (saveError) {
       setError(messageFrom(saveError, "Não foi possível salvar os critérios."));
     } else {
@@ -657,6 +673,9 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
                                     {presentation.status === "live" && (
                                       <button disabled={Boolean(working) || !canFinish} onClick={() => void changePresentationStatus(presentation, "finished")}><Check /> Concluir</button>
                                     )}
+                                    {presentation.submitted_scorecards > 0 && (presentation.status === "live" || presentation.status === "finished") && (
+                                      <button disabled={Boolean(working)} onClick={() => setScoreEditor({ presentation, criteria: competition.criteria })}><PencilLine /> Editar notas</button>
+                                    )}
                                     {presentation.status === "live" && (
                                       <button className={controls.pauseTimerButton} disabled={Boolean(working)} onClick={() => void managePresentationTimer(presentation, timerIsPaused ? "resume" : "pause")}>
                                         {timerIsPaused ? <Play /> : <Pause />}{timerWaitingToStart ? "Iniciar tempo" : timerIsPaused ? "Retomar tempo" : "Pausar tempo"}
@@ -783,9 +802,12 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
           <button className={styles.modalBackdrop} onClick={() => setCriteriaCompetition(null)} aria-label="Fechar configuração" />
           <form className={`${styles.criteriaModal} ${responsiveStyles.criteriaModal}`} onSubmit={(event) => void saveCriteria(event)}>
             <div className={styles.modalHeading}>
-              <div><span className="eyebrow">{criteriaCompetition.name}</span><h2 id="criteria-modal-title">Critérios de avaliação</h2><p>Defina de 1 a 12 critérios. Depois da primeira ficha enviada, a edição fica bloqueada para preservar o resultado.</p></div>
+              <div><span className="eyebrow">{criteriaCompetition.name}</span><h2 id="criteria-modal-title">Critérios de avaliação</h2><p>Defina de 1 a 12 critérios. Se já houver fichas, a alteração exige reiniciar todas as avaliações desta competição.</p></div>
               <button type="button" className={styles.iconButton} onClick={() => setCriteriaCompetition(null)} aria-label="Fechar"><X /></button>
             </div>
+            <label className={styles.noteField}><span><input type="checkbox" checked={criteriaReset} onChange={(event) => setCriteriaReset(event.target.checked)} /> Confirmo apagar as fichas e classificações não publicadas e voltar as apresentações para a fila.</span></label>
+            {criteriaReset && <label className={styles.noteField}>Motivo da alteração<textarea value={criteriaReason} onChange={(event) => setCriteriaReason(event.target.value)} minLength={3} maxLength={500} required /></label>}
+            {error && <div className="form-error" role="alert">{messageFrom({ message: error }, error)}</div>}
             <div className={`${styles.criteriaDrafts} ${responsiveStyles.criteriaDrafts}`}>
               {criteriaDraft.map((criterion, index) => (
                 <fieldset key={`${index}-${criterion.name}`}>
@@ -807,6 +829,8 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
           </form>
         </div>
       )}
+
+      {scoreEditor && <AdminScoreEditor presentationId={scoreEditor.presentation.id} participantName={scoreEditor.presentation.participant_name} criteria={scoreEditor.criteria} onClose={() => setScoreEditor(null)} onSaved={() => { setNotice("Correção registrada. Gere novamente a classificação se necessário."); void loadWorkspace(selectedEventId); }} />}
 
       {shuffleTarget && (
         <div className={styles.modalLayer} role="dialog" aria-modal="true" aria-labelledby="shuffle-modal-title">

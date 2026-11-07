@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, RefreshCw, Scale, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { participantName, type ParticipantRelation } from "@/lib/participant-relation";
@@ -11,7 +11,7 @@ type Vote = { match_id: string; judge_id: string };
 type Assignment = { event_id: string; competition_id: string; category_id: string | null; ring_id: string | null; judge_id: string; active: boolean };
 type Event = { id: string; competitions: Array<{ id: string; model: "digital_flags" | "sum_score"; categories: Array<{ id: string }> }> };
 
-export default function VoteMonitor({ initialEvents, initialMatches, initialRegistrations, initialVotes, initialAssignments }: {
+export default function VoteMonitor({ initialMatches, initialRegistrations, initialVotes }: {
   initialEvents: Event[];
   initialMatches: Match[];
   initialRegistrations: Registration[];
@@ -19,32 +19,24 @@ export default function VoteMonitor({ initialEvents, initialMatches, initialRegi
   initialAssignments: Assignment[];
 }) {
   const [matches, setMatches] = useState(initialMatches);
+  const [votes, setVotes] = useState(initialVotes);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState("");
-
-  const categoryCompetition = useMemo(() => {
-    const map = new Map<string, { eventId: string; competitionId: string }>();
-    for (const event of initialEvents) {
-      for (const competition of event.competitions.filter((item) => item.model === "digital_flags")) {
-        for (const category of competition.categories) map.set(category.id, { eventId: event.id, competitionId: competition.id });
-      }
-    }
-    return map;
-  }, [initialEvents]);
 
   const person = (id: string) => participantName(initialRegistrations.find((item) => item.id === id)?.participants || null);
   const activeMatches = matches.filter((item) => item.status === "live");
 
-  function assignedJudgeCount(match: Match) {
-    const context = categoryCompetition.get(match.category_id);
-    if (!context) return 0;
-    return new Set(initialAssignments.filter((assignment) => assignment.active
-      && assignment.event_id === context.eventId
-      && assignment.competition_id === context.competitionId
-      && assignment.ring_id === match.ring_id
-      && (!assignment.category_id || assignment.category_id === match.category_id))
-      .map((assignment) => assignment.judge_id)).size;
-  }
+  useEffect(() => {
+    const ids = initialMatches.filter((match) => match.status === "live").map((match) => match.id);
+    if (!ids.length) return;
+    let active = true;
+    const refresh = async () => {
+      const { data } = await createClient().from("flag_votes").select("match_id,judge_id").in("match_id", ids);
+      if (active && data) setVotes(data);
+    };
+    const interval = window.setInterval(() => void refresh(), 5000);
+    return () => { active = false; window.clearInterval(interval); };
+  }, [initialMatches]);
 
   async function confirm(match: Match) {
     setLoading(match.id);
@@ -70,9 +62,9 @@ export default function VoteMonitor({ initialEvents, initialMatches, initialRegi
       </div>
       {error && <div className="form-error">{error}</div>}
       {activeMatches.length ? <div className="vote-monitor-list">{activeMatches.map((match) => {
-        const expected = assignedJudgeCount(match);
-        const received = new Set(initialVotes.filter((vote) => vote.match_id === match.id).map((vote) => vote.judge_id)).size;
-        const ready = expected >= 3 && received === expected;
+        const expected = 3;
+        const received = new Set(votes.filter((vote) => vote.match_id === match.id).map((vote) => vote.judge_id)).size;
+        const ready = received === expected;
         return (
           <article key={match.id}>
             <div>
@@ -83,7 +75,7 @@ export default function VoteMonitor({ initialEvents, initialMatches, initialRegi
             <div>
               {ready
                 ? <button className="primary" disabled={loading === match.id} onClick={() => confirm(match)}><Check />{loading === match.id ? "Confirmando..." : "Confirmar resultado"}</button>
-                : <small><Scale />{expected < 3 ? "Designe ao menos 3 juízes" : "Aguardando todos os juízes"}</small>}
+                : <small><Scale />Aguardando os três juízes</small>}
             </div>
           </article>
         );

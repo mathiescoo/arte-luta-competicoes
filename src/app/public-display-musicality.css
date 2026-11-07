@@ -6,6 +6,14 @@
   line-height: 1.5;
 }
 
+.display-judge-panels { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 20px; }
+.display-judge-panel { display: grid; gap: 9px; padding: 15px; border: 1px solid #515247; border-radius: 10px; background: #22231d; }
+.display-judge-panel span { color: #e8c46b; font-size: 12px; letter-spacing: .12em; }
+.display-judge-panel strong { font-size: clamp(13px, 1.5vw, 20px); }
+.display-judge-panel.blue { background: #235b9b; border-color: #71a5e6; }
+.display-judge-panel.green { background: #176c3e; border-color: #6bc98d; }
+@media (min-width: 701px) { .public-display--fullscreen .display-match { width: min(1170px, 100%); min-height: 0; align-self: center; margin: 0 auto; } .public-display--fullscreen .display-fighters article { min-height: 0; padding: clamp(12px, 2vh, 28px); } .public-display--fullscreen .display-phase { margin-bottom: 14px; } }
+
 @media (min-width: 701px) {
   html:has(.public-display--fullscreen),
   body:has(.public-display--fullscreen) {

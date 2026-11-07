@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Clock, Music2, Radio, Trophy, Users } from "lucide-react";
 
@@ -18,6 +18,7 @@ type Board = {
   green_votes?: number;
   votes_received?: number;
   judges_required?: number;
+  judge_panels?: Array<{ seat: number; voted: boolean; color?: "blue" | "green" | null }> | null;
   winner_name: string | null;
   competition_name?: string | null;
   category_name?: string | null;
@@ -44,20 +45,12 @@ function countdownLabel(value: number) {
 
 export default function PublicDisplay({ board, pin }: { board: Board; pin: string }) {
   const router = useRouter();
-  const [clock, setClock] = useState<{ now: number; serverOffset: number } | null>(null);
+  const [clock, setClock] = useState<{ key: string; remaining: number } | null>(null);
+  const timerAnchorRef = useRef<{ key: string; deadline: number } | null>(null);
   useEffect(() => {
     const timer = window.setInterval(() => router.refresh(), 3500);
     return () => window.clearInterval(timer);
   }, [router]);
-
-  useEffect(() => {
-    const serverNow = Date.parse(board.server_now || "");
-    const timer = window.setInterval(() => {
-      const now = Date.now();
-      setClock({ now, serverOffset: Number.isFinite(serverNow) ? now - serverNow : 0 });
-    }, 250);
-    return () => window.clearInterval(timer);
-  }, [board.server_now]);
 
   const live = board.match_status === "live";
   const finished = board.match_status === "finished";
@@ -75,10 +68,44 @@ export default function PublicDisplay({ board, pin }: { board: Board; pin: strin
   const timerState = board.timer_state || "running";
   const timerEndsAt = Date.parse(board.timer_ends_at || "");
   const storedTimerRemaining = Math.max(0, Number(board.timer_remaining_seconds ?? timerDuration));
-  const syncedNow = clock === null ? null : clock.now - clock.serverOffset;
-  const timerRemaining = timerState === "paused" || !Number.isFinite(timerEndsAt) || syncedNow === null
-    ? storedTimerRemaining
-    : Math.max(0, Math.ceil((timerEndsAt - syncedNow) / 1000));
+  const timerSessionKey = [
+    board.presentation_status || "",
+    timerState,
+    board.timer_started_at || "",
+    board.timer_ends_at || "",
+  ].join("|");
+
+  useEffect(() => {
+    let timeout: number | undefined;
+
+    const tick = () => {
+      const now = Date.now();
+      if (timerState === "running" && Number.isFinite(timerEndsAt)) {
+        if (timerAnchorRef.current?.key !== timerSessionKey) {
+          const serverNow = Date.parse(board.server_now || "");
+          const serverRemaining = Number.isFinite(serverNow)
+            ? Math.max(0, timerEndsAt - serverNow)
+            : storedTimerRemaining * 1000;
+          timerAnchorRef.current = { key: timerSessionKey, deadline: now + serverRemaining };
+        }
+      } else {
+        timerAnchorRef.current = null;
+      }
+
+      const anchor = timerAnchorRef.current;
+      setClock({ key: timerSessionKey, remaining: anchor ? Math.max(0, Math.ceil((anchor.deadline - now) / 1000)) : storedTimerRemaining });
+      timeout = window.setTimeout(tick, Math.max(50, 1015 - (now % 1000)));
+    };
+
+    tick();
+    return () => {
+      if (timeout !== undefined) window.clearTimeout(timeout);
+    };
+  }, [board.server_now, storedTimerRemaining, timerEndsAt, timerSessionKey, timerState]);
+
+  const timerRemaining = timerState === "running" && clock?.key === timerSessionKey
+    ? clock.remaining
+    : storedTimerRemaining;
   const timerExpired = timerRemaining <= 0;
   const timerWaitingToStart = timerState === "paused" && !board.timer_started_at;
 
@@ -102,7 +129,7 @@ export default function PublicDisplay({ board, pin }: { board: Board; pin: strin
           )}
           <h2>{board.participant_name}</h2>
           {scoringFinished ? (
-            <div className="display-scoring-final"><Trophy /><span>PONTUAÇÃO FINAL</span><b>{scoreTotal ?? "—"}</b><small>PONTOS</small></div>
+            <div className="display-scoring-final"><Trophy /><span>MÉDIA FINAL</span><b>{scoreTotal ?? "—"}</b><small>DE 10 PONTOS</small></div>
           ) : (
             <>
               <div className="display-scoring-info">
@@ -121,6 +148,15 @@ export default function PublicDisplay({ board, pin }: { board: Board; pin: strin
             <article className="blue"><span>COMPETIDOR AZUL</span><strong>{board.blue_name}</strong>{finished && <b>{board.blue_votes || 0}</b>}</article>
             <i>×</i>
             <article className="green"><span>COMPETIDOR VERDE</span><strong>{board.green_name}</strong>{finished && <b>{board.green_votes || 0}</b>}</article>
+          </div>
+          <div className="display-judge-panels" aria-label="Votos dos três jurados">
+            {[1, 2, 3].map((seat) => {
+              const panel = board.judge_panels?.find((item) => item.seat === seat);
+              return <div className={`display-judge-panel ${panel?.color || ""}`} key={seat}>
+                <span>JURADO {seat}</span>
+                <strong>{panel?.color === "blue" ? "AZUL" : panel?.color === "green" ? "VERDE" : panel?.voted ? "VOTO RECEBIDO" : "AGUARDANDO VOTO"}</strong>
+              </div>;
+            })}
           </div>
           {board.winner_name
             ? <div className="display-winner"><Trophy /> Vencedor: <b>{board.winner_name}</b></div>

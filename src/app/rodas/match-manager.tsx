@@ -53,10 +53,17 @@ export default function MatchManager({ initialEvents, initialRegistrations, init
   async function startMatch(match: Match) {
     setLoading(true);
     setError("");
-    const payload = { status: "live", started_at: new Date().toISOString() };
-    const { error: updateError } = await createClient().from("matches").update(payload).eq("id", match.id);
-    if (updateError) setError(updateError.message);
-    else setMatches((items) => items.map((item) => item.id === match.id ? { ...item, ...payload } : item));
+    const { data, error: updateError } = await createClient().rpc("start_flag_match", { target_match: match.id });
+    const started = Array.isArray(data) ? data[0] : data;
+    if (updateError) {
+      setError(/assign at least three active judges/i.test(updateError.message)
+        ? "Designe 3 juízes ativos para esta roda e categoria antes de iniciar."
+        : updateError.message);
+    } else {
+      const payload = { status: "live", started_at: started?.started_at || new Date().toISOString() };
+      setMatches((items) => items.map((item) => item.id === match.id ? { ...item, ...payload } : item));
+      window.location.reload();
+    }
     setLoading(false);
   }
 
