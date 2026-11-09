@@ -23,7 +23,7 @@ export default async function ParticipantsPage() {
   const [{ data: events }, { data: participants }] = await Promise.all([
     supabase
       .from("events")
-      .select("id,name,competitions(id,name,categories(id,name))")
+      .select("id,name,status,competitions(id,name,categories(id,name))")
       .eq("organization_id", role.organization_id)
       .order("created_at", { ascending: false }),
     supabase

@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 type EventItem = {
   id: string;
   name: string;
+  status: string;
   competitions: Array<{
     id: string;
     name: string;
@@ -229,6 +230,11 @@ export default function CsvImporter({ organizationId, events }: { organizationId
   async function importFile(eventChange: ChangeEvent<HTMLInputElement>) {
     const file = eventChange.target.files?.[0];
     if (!file || !eventId) return;
+    if (event?.status === "finished") {
+      setError("Este evento está finalizado e não recebe novas inscrições.");
+      eventChange.target.value = "";
+      return;
+    }
     if (!/\.(csv|xlsx)$/i.test(file.name)) {
       setError("Selecione a planilha Excel (.xlsx) ou um CSV.");
       return;

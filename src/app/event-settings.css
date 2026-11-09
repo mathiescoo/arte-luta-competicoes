@@ -1,1 +1,9 @@
 .toggle-setting{display:flex!important;align-items:flex-start;gap:11px;margin-top:22px!important;padding:15px;border:1px solid var(--line);border-radius:7px;background:#fff}.toggle-setting input{width:18px;height:18px;margin:0;accent-color:#a67c16}.toggle-setting span{display:grid;gap:5px}.toggle-setting b{font-size:12px}.toggle-setting small{font-size:11px;color:#777;line-height:1.45}
+.form-grid > .wide { grid-column: 1 / -1; }
+.public-registration-form { max-width: 760px; }
+.public-registration-form select, .category-workspace .form-grid select, .category-workspace .form-grid textarea { width: 100%; min-height: 45px; border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; background: #fff; }
+.public-registration-form > .primary { margin-top: 20px; }
+@media (max-width: 760px) {
+  .event-detail-head { gap: 14px; flex-wrap: wrap; }
+  .event-detail-head .secondary { display: inline-flex; }
+}

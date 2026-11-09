@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 
 type Category = { id: string; name: string };
 type Competition = { id: string; name: string; categories: Category[] };
-type EventItem = { id: string; name: string; competitions: Competition[] };
+type EventItem = { id: string; name: string; status: string; competitions: Competition[] };
 
 type Registration = {
   id: string;
@@ -69,6 +69,14 @@ function registrationLabel(details: RegistrationDetails) {
   return [details.event?.name, details.competition?.name, details.category?.name]
     .filter(Boolean)
     .join(" · ") || "Inscrição sem categoria";
+}
+
+function registrationAnswers(data: Record<string, unknown>) {
+  const labels = data._labels && typeof data._labels === "object" && !Array.isArray(data._labels)
+    ? data._labels as Record<string, unknown> : {};
+  const defaults: Record<string, string> = { age: "Idade", song_title: "Música", song_author: "Autor ou intérprete" };
+  return Object.entries(data).filter(([key, value]) => key !== "_labels" && (typeof value === "string" || typeof value === "number"))
+    .map(([key, value]) => ({ key, label: String(labels[key] || defaults[key] || key), value: String(value) }));
 }
 
 function categoriesLabel(participant: Participant, events: EventItem[]) {
@@ -203,6 +211,11 @@ export default function ParticipantManager({
     const categoryId = String(form.get("category_id") || "");
     if (!eventId || !categoryId) {
       setError("Selecione o evento e a categoria.");
+      setLoading(false);
+      return;
+    }
+    if (initialEvents.find((item) => item.id === eventId)?.status === "finished") {
+      setError("Este evento está finalizado e não recebe novas inscrições.");
       setLoading(false);
       return;
     }
@@ -488,6 +501,9 @@ export default function ParticipantManager({
                 </select>
               </label>
               {managedDetails && <p><b>Categoria atual:</b> {managedDetails.category?.name || "Não identificada"}</p>}
+              {managedDetails && registrationAnswers(managedDetails.registration.data || {}).length > 0 && (
+                <div><b>Dados informados na inscrição:</b>{registrationAnswers(managedDetails.registration.data || {}).map((answer) => <p key={answer.key}><b>{answer.label}:</b> {answer.value}</p>)}</div>
+              )}
             </div>
 
             <section className="participant-action-card">
