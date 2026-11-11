@@ -13,7 +13,7 @@ Plataforma para operação de campeonatos da Arena Arte Luta: eventos, categoria
 
 O deploy da Vercel **não executa SQL**. No Supabase, abra **SQL Editor** e execute, na ordem numérica, todas as migrations de:
 
-`supabase/migrations/001_initial.sql` até `supabase/migrations/018_scoring_workflow.sql`.
+`supabase/migrations/001_initial.sql` até `supabase/migrations/033_event_closure_reports.sql` em uma instalação nova. Em produção, aplique somente as migrations pendentes; não repita todas as migrations em uma base com dados.
 
 Em especial, as migrations `013` a `018` são necessárias para login de juízes, gestão de acessos, criação de eventos, votação segura e Cante Comigo.
 
@@ -44,9 +44,11 @@ Todas devem retornar o nome da função, nunca `null`.
 4. Em **Liberação de juízes**, aprove os pedidos feitos em “Sou juiz e quero solicitar acesso”.
 5. Em cada evento, abra **Juízes e rodas** e designe os juízes aprovados. Para confrontos por bandeiras, associe cada juiz à competição, categoria e roda.
 6. Para bandeiras, designe pelo menos três juízes ativos, crie o confronto e inicie a disputa. O resultado só pode ser confirmado quando todos os juízes designados tiverem votado; o telão não mostra votos por cor enquanto a votação estiver aberta.
-7. Para Cante Comigo, abra **Avaliações Cante Comigo** ou **Notas e apresentações**, defina os critérios, gere a fila por categoria, abra uma apresentação por vez e conclua somente depois das fichas de todos os juízes ativos. A classificação usa a **soma** das notas.
+7. Para Cante Comigo, abra **Avaliações Cante Comigo** ou **Notas e apresentações**, defina os critérios, gere a fila por categoria, abra uma apresentação por vez e conclua somente depois das fichas de todos os juízes ativos. A classificação usa a **média normalizada de 0 a 10**, independentemente da quantidade de juízes. Para musicalidade, é necessário pelo menos um juiz ativo. Alterações de critérios preservam as avaliações anteriores e usam os critérios aplicáveis às novas fichas.
 8. Confira a classificação em **Resultados** e publique apenas depois de homologar todos os inscritos.
-9. Em **Telões ao vivo**, crie uma sessão e abra o link público no monitor. O telão atualiza automaticamente em intervalos curtos.
+9. Em **Telões ao vivo**, crie uma sessão da modalidade correta e abra o link público no monitor. Para musicalidade, não é necessário criar rodas. Abra a apresentação para chamar o participante e inicie o cronômetro apenas quando ele começar a cantar.
+10. Na página do evento, configure e salve o formulário público. Ative o link e defina o status como **Inscrições abertas**. O formulário exibe as músicas escolhidas e impede uma música repetida nas novas inscrições pelo link.
+11. Depois de resolver todas as apresentações e confrontos pendentes, use **Finalizar evento e gerar PDF**. O encerramento é definitivo e o relatório fica disponível para baixar novamente.
 
 ## Regras de segurança aplicadas
 
@@ -66,4 +68,17 @@ Todas devem retornar o nome da função, nunca `null`.
 
 ## Ensaio recomendado antes de sábado
 
-Faça uma rodada completa com uma conta administradora, três contas de juiz e um telão em outro dispositivo: crie uma categoria, cadastre dois participantes, designe os três juízes, registre os votos, confirme o resultado e confira o telão. Se Cante Comigo estiver no programa, repita o ensaio com uma categoria, três juízes, uma apresentação e uma classificação gerada.
+Faça uma rodada completa com uma conta administradora, três contas de juiz e um telão em outro dispositivo: crie uma categoria, cadastre dois participantes, designe os três juízes, registre os votos, confirme o resultado e confira o telão. Se Cante Comigo estiver no programa, repita o ensaio com uma categoria, um ou mais juízes, uma apresentação e uma classificação gerada. Faça os ensaios em um evento de teste, separado dos dados oficiais.
+
+## Conexão e recuperação
+
+O aplicativo depende de internet para salvar dados e atualizar os outros dispositivos. O aviso de navegador offline não representa uma confirmação de disponibilidade do Supabase. Após uma falha durante uma inscrição ou nota, confira se a operação foi gravada antes de repeti-la. As telas de recuperação permitem tentar carregar novamente sem ocultar a falha.
+
+## Verificação técnica
+
+- `npm test`: testes de pontuação, relações de participantes, geração de PDF e proteção/recuperação da API de encerramento (API com banco simulado).
+- `npm run lint` e `npm run build`: validação de código, tipos e compilação para produção.
+- `npm audit` e `npm audit --omit=dev`: auditoria de dependências completa e somente de produção.
+- `supabase/validar_032_033.sql`: teste transacional de inscrições e encerramento, com `ROLLBACK` no fim. Não troque por `COMMIT`: o teste contém dados temporários.
+
+Os testes automatizados não substituem um ensaio autenticado no evento de teste com organização, juiz e telão em dispositivos diferentes.

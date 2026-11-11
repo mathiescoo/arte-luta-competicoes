@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import ConnectionStatus from "./connection-status";
 import "./globals.css";
 import "./login.css";
 import "./management.css";
@@ -26,6 +27,7 @@ import "./brand-system.css";
 import "./responsive-system.css";
 import "./responsive-experience.css";
 import "./public-display-musicality.css";
+import "./operational-reliability.css";
 
 export const metadata: Metadata = {
   title: "Arena Arte Luta",
@@ -41,5 +43,5 @@ export const metadata: Metadata = {
 export const viewport: Viewport = { themeColor: "#11140f", width: "device-width", initialScale: 1 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="pt-BR"><body>{children}</body></html>;
+  return <html lang="pt-BR"><body><ConnectionStatus />{children}</body></html>;
 }
