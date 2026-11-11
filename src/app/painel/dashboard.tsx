@@ -38,7 +38,7 @@ type Event = {
   status: string;
   starts_at: string | null;
   created_at: string;
-  competitions: Array<{ id: string; categories: Array<{ id: string }> }>;
+  competitions: Array<{ id: string; model: string; categories: Array<{ id: string }> }>;
   rings: Array<Ring>;
 };
 
@@ -61,10 +61,13 @@ export default function Dashboard({ name, role, events }: { name: string; role: 
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");
   }, []);
 
-  const active = events.find((event) => event.status === "live") || events.find((event) => event.status !== "archived") || null;
+  const upcoming = useMemo(() => events.filter((event) => !["finished", "archived"].includes(event.status)), [events]);
+  const active = upcoming.find((event) => event.status === "live") || upcoming[0] || null;
+  const hasFlags = Boolean(active?.competitions.some((item) => item.model === "digital_flags"));
+  const hasScoring = Boolean(active?.competitions.some((item) => item.model === "sum_score"));
   const filtered = useMemo(
-    () => (filter === "Todos" ? events : events.filter((event) => statusName[event.status] === filter)),
-    [filter, events],
+    () => (filter === "Todos" ? upcoming : upcoming.filter((event) => statusName[event.status] === filter)),
+    [filter, upcoming],
   );
   const initials = name
     .split(" ")
@@ -102,7 +105,7 @@ export default function Dashboard({ name, role, events }: { name: string; role: 
           <Link href="/resultados"><Award />Resultados</Link>
           <div className="nav-label">OPERAÇÃO</div>
           <Link href="/rodas"><Activity />Controle das rodas</Link>
-          <Link href="/pontuacao"><Music2 />Avaliações Cante Comigo</Link>
+          <Link href="/pontuacao"><Music2 />Avaliações por notas</Link>
           <Link href="/telao"><Radio />Telões ao vivo</Link>
           <div className="nav-label">SISTEMA</div>
           <Link href="/usuarios"><UserCog />Usuários e acessos</Link>
@@ -160,7 +163,8 @@ export default function Dashboard({ name, role, events }: { name: string; role: 
               <h2>{active.name}</h2>
               <p>{[active.venue, active.city].filter(Boolean).join(" · ") || "Local a definir"}</p>
               <div className="hero-buttons">
-                <Link className="hero-primary" href="/rodas"><Activity />Abrir controle das rodas</Link>
+                <Link className="hero-primary" href={hasFlags ? "/rodas" : hasScoring ? "/pontuacao" : `/eventos/${active.id}`}><Activity />{hasFlags ? "Controle dos jogos" : hasScoring ? "Controle das avaliações" : "Configurar evento"}</Link>
+                {hasFlags && hasScoring && <Link className="ghost" href="/pontuacao"><Music2 />Avaliações por notas</Link>}
                 <Link className="ghost" href="/telao"><Eye />Visualizar telão</Link>
               </div>
             </div>
@@ -183,21 +187,21 @@ export default function Dashboard({ name, role, events }: { name: string; role: 
         )}
 
         <section className="section-head">
-          <div><span className="eyebrow">OPERAÇÃO EM TEMPO REAL</span><h3>Rodas em atividade</h3></div>
-          <Link className="text-button" href="/rodas">Gerenciar rodas →</Link>
+          <div><span className="eyebrow">OPERAÇÃO EM TEMPO REAL</span><h3>{hasFlags ? "Rodas do evento" : "Operação do evento"}</h3></div>
+          {hasFlags && <Link className="text-button" href="/rodas">Gerenciar rodas →</Link>}
         </section>
-        {active?.rings.length ? (
+        {hasFlags && active?.rings.length ? (
           <section className="ring-grid">
             {active.rings.map((ring) => (
               <article className="ring-card" key={ring.id}>
                 <div className="ring-top"><span className="status gold"><i /> {ring.status}</span><strong>{ring.name}</strong></div>
-                <div className="empty-ring"><Activity /><span>Nenhum confronto iniciado</span><small>Configure juízes e categorias para esta roda.</small></div>
+                <div className="empty-ring"><Activity /><span>Acompanhe os jogos e votos no controle da roda.</span></div>
                 <Link href="/rodas" className="ring-link">Abrir controle <ChevronRight /></Link>
               </article>
             ))}
           </section>
         ) : (
-          <div className="empty-inline"><Activity /><span>{active ? "Este evento ainda não possui rodas configuradas." : "Crie um evento para configurar as rodas."}</span><Link href={active ? "/rodas" : "/eventos/novo"}>{active ? "Criar rodas" : "Criar evento"}</Link></div>
+          <div className="empty-inline"><Activity /><span>{!active ? "Crie um evento para começar." : hasFlags ? "Este evento ainda não possui rodas configuradas." : "As apresentações por notas não precisam de rodas."}</span><Link href={!active ? "/eventos/novo" : hasFlags ? "/rodas" : "/pontuacao"}>{!active ? "Criar evento" : hasFlags ? "Criar rodas" : "Abrir avaliações"}</Link></div>
         )}
 
         <section className="lower-grid">
@@ -205,7 +209,7 @@ export default function Dashboard({ name, role, events }: { name: string; role: 
             <div className="section-head compact">
               <div><span className="eyebrow">AGENDA</span><h3>Eventos cadastrados</h3></div>
               <select value={filter} onChange={(event) => setFilter(event.target.value)}>
-                <option>Todos</option><option>Rascunho</option><option>Inscrições abertas</option><option>Preparação</option><option>Em andamento</option><option>Finalizado</option>
+                <option>Todos</option><option>Rascunho</option><option>Inscrições abertas</option><option>Inscrições encerradas</option><option>Preparação</option><option>Em andamento</option>
               </select>
             </div>
             <div className="event-list">
@@ -214,6 +218,7 @@ export default function Dashboard({ name, role, events }: { name: string; role: 
                 return <Link href={`/eventos/${event.id}`} key={event.id}><div className="date"><strong>{date ? date.getUTCDate() : "—"}</strong><span>{date ? date.toLocaleString("pt-BR", { month: "short" }).replace(".", "").toUpperCase() : "DATA"}</span></div><div><strong>{event.name}</strong><span>{statusName[event.status] || event.status}{event.city ? ` · ${event.city}` : ""}</span></div><ChevronRight className="event-arrow" /></Link>;
               }) : <div className="list-empty">Nenhum evento corresponde a este filtro.</div>}
             </div>
+            <p><Link href="/eventos#historico">Consultar eventos já realizados →</Link></p>
           </div>
           <aside className="quick">
             <span className="eyebrow">ATALHOS</span><h3>Ações rápidas</h3>

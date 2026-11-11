@@ -30,6 +30,7 @@ export default function UserAccessManager({ organizationId, currentUserId, initi
 
   async function updateAccess(user: ManagedUser, role: UserRole, enabled: boolean) {
     const actionId = `${user.id}-${role}`;
+    if (!enabled && role === "judge" && !window.confirm(`Remover o acesso de juiz de ${user.name}? As fichas, os votos e o histórico serão preservados. Outros papéis não serão removidos.`)) return;
     if (!enabled && role === "admin" && (user.id === currentUserId || adminCount <= 1)) {
       setError("Mantenha pelo menos um administrador e não remova seu próprio acesso administrativo.");
       return;
@@ -47,7 +48,7 @@ export default function UserAccessManager({ organizationId, currentUserId, initi
     });
 
     // Compatibilidade com instalações anteriores à migration 014.
-    if (actionError?.code === "PGRST202") {
+    if (actionError?.code === "PGRST202" && role !== "judge") {
       const fallback = enabled
         ? await supabase.from("user_roles").upsert({ user_id: user.id, organization_id: organizationId, role }, { onConflict: "user_id,organization_id,role" })
         : await supabase.from("user_roles").delete().eq("user_id", user.id).eq("organization_id", organizationId).eq("role", role);

@@ -33,7 +33,7 @@ export default async function ScoringPage() {
       <Link href={returnHref} className={`${styles.backLink} ${responsiveStyles.backLink}`}>{returnLabel}</Link>
       <header className={`${styles.heading} ${responsiveStyles.heading}`}>
         <div>
-          <span className={`eyebrow ${responsiveStyles.eyebrow}`}>{judgeOnly ? "PAINEL DO JUIZ" : "CANTE COMIGO E AVALIAÇÕES"}</span>
+          <span className={`eyebrow ${responsiveStyles.eyebrow}`}>{judgeOnly ? "PAINEL DO JUIZ" : "AVALIAÇÕES POR NOTAS"}</span>
           <h1>{judgeOnly ? "Minha ficha de avaliação" : "Notas e apresentações"}</h1>
           <p>{judgeOnly ? "Quando uma apresentação for liberada para você, registre as notas nesta ficha de forma simples e segura." : "Configure os critérios, abra cada apresentação e registre as notas dos juízes com segurança."}</p>
         </div>

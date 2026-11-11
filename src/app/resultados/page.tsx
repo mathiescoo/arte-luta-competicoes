@@ -19,7 +19,7 @@ export default async function ResultsPage() {
     .from("events")
     .select("id,name,competitions(id,name,model,categories(id,name))")
     .eq("organization_id", managerRole.organization_id)
-    .neq("status", "archived")
+    .not("status", "in", "(finished,archived)")
     .order("created_at", { ascending: false });
   const eventIds = (events || []).map((event) => event.id);
   const categoryIds = (events || []).flatMap((event) => event.competitions.flatMap((competition) => competition.categories.map((category) => category.id)));

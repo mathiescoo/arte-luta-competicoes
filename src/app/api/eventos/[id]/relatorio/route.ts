@@ -6,25 +6,26 @@ export const dynamic = "force-dynamic";
 type Report = { snapshot: Snapshot; pdf_base64: string | null };
 const validEventId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-async function reportResponse(id: string) {
+async function reportResponse(id: string, original = false) {
   if (!validEventId.test(id)) return Response.json({ error: "Evento inválido." }, { status: 404 });
   const client = await createClient();
   const { data, error } = await client.rpc("get_event_closure_report", { target_event: id });
   if (error || !data) return Response.json({ error: "Relatório não encontrado ou acesso não autorizado." }, { status: 403 });
   const report = data as Report;
   let bytes: Buffer;
-  if (report.pdf_base64) bytes = Buffer.from(report.pdf_base64, "base64");
+  if (original && report.pdf_base64) bytes = Buffer.from(report.pdf_base64, "base64");
   else {
     bytes = await makePdf(report.snapshot);
-    const { data: saved, error: saveError } = await client.rpc("save_event_closure_pdf", { target_event: id, encoded_pdf: bytes.toString("base64") });
-    if (saveError || !saved) return Response.json({ error: "O evento foi encerrado, mas não foi possível salvar o PDF. Tente baixar novamente." }, { status: 500 });
-    bytes = Buffer.from(saved as string, "base64");
+    if (!report.pdf_base64) {
+      const { data: saved, error: saveError } = await client.rpc("save_event_closure_pdf", { target_event: id, encoded_pdf: bytes.toString("base64") });
+      if (saveError || !saved) return Response.json({ error: "O evento foi encerrado, mas não foi possível salvar o PDF. Tente baixar novamente." }, { status: 500 });
+    }
   }
   return new Response(new Uint8Array(bytes), { headers: { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename="relatorio-evento-${id}.pdf"`, "Cache-Control": "private, no-store" } });
 }
 
-export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
-  try { return await reportResponse((await context.params).id); }
+export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
+  try { return await reportResponse((await context.params).id, new URL(request.url).searchParams.get("original") === "1"); }
   catch { return Response.json({ error: "Não foi possível gerar o relatório." }, { status: 500 }); }
 }
 

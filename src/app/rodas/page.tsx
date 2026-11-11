@@ -25,7 +25,7 @@ export default async function RingsPage() {
     .from("events")
     .select("id,name,status,rings(id,name,status,settings),competitions(id,name,model,categories(id,name))")
     .eq("organization_id", managerRole.organization_id)
-    .neq("status", "archived")
+    .not("status", "in", "(finished,archived)")
     .order("created_at", { ascending: false });
 
   const allEvents = events || [];

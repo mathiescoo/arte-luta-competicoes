@@ -17,6 +17,25 @@ export default function JudgeApplications({ organizationId, initialApplications 
   const [applications, setApplications] = useState(initialApplications);
   const [error, setError] = useState("");
   const [working, setWorking] = useState("");
+  const [revokeTarget, setRevokeTarget] = useState<Application | null>(null);
+
+  async function revoke(application: Application) {
+    setError(""); setWorking(application.id);
+    try {
+      const { error: revokeError } = await createClient().rpc("manage_organization_access", {
+        target_user: application.user_id, target_organization: organizationId, target_role: "judge", enabled: false,
+      });
+      if (revokeError) {
+        setError(/judge assignments are locked/i.test(revokeError.message)
+          ? "Há uma avaliação em andamento ou uma escala protegida. Conclua a operação antes de remover o acesso."
+          : "Não foi possível remover o acesso. Verifique se a atualização do banco foi aplicada e se o juiz possui avaliações em andamento.");
+        return;
+      }
+      setApplications((items) => items.map((item) => item.id === application.id ? { ...item, status: "rejected" } : item));
+      setRevokeTarget(null);
+    } catch { setError("Falha de conexão. Atualize a página e confira o acesso antes de tentar novamente."); }
+    finally { setWorking(""); }
+  }
 
   async function decide(application: Application, approved: boolean) {
     setError("");
@@ -68,13 +87,20 @@ export default function JudgeApplications({ organizationId, initialApplications 
             <span className="person-dot"><UserRound /></span>
             <div><strong>{application.full_name}</strong><span>{application.email} · solicitado em {new Intl.DateTimeFormat("pt-BR", { dateStyle: "short" }).format(new Date(application.created_at))}</span></div>
             <b>{application.status === "pending" ? "Pendente" : application.status === "approved" ? "Liberado" : "Recusado"}</b>
-            {application.status === "pending" && <div className="application-actions">
-              <button className="approve" disabled={working === application.id} onClick={() => void decide(application, true)}><Check />Liberar</button>
-              <button disabled={working === application.id} onClick={() => void decide(application, false)}><ShieldX />Recusar</button>
+            {application.status !== "approved" && <div className="application-actions">
+              <button className="approve" disabled={!!working} onClick={() => void decide(application, true)}><Check />{application.status === "rejected" ? "Liberar novamente" : "Liberar"}</button>
+              {application.status === "pending" && <button disabled={!!working} onClick={() => void decide(application, false)}><ShieldX />Recusar</button>}
             </div>}
+            {application.status === "approved" && <button disabled={!!working} onClick={() => { setError(""); setRevokeTarget(application); }}><ShieldX />Remover acesso</button>}
           </article>
         )) : <div className="empty-state compact"><UserRound /><h2>Nenhuma solicitação</h2><p>Os juízes podem se cadastrar pela página pública de cadastro.</p></div>}
       </div>
+      {revokeTarget && <div className="modal-wrap"><button className="backdrop" aria-label="Fechar" disabled={!!working} onClick={() => setRevokeTarget(null)} /><section className="modal" role="dialog" aria-modal="true" aria-labelledby="revoke-judge-title">
+        <h2 id="revoke-judge-title">Remover acesso de {revokeTarget.full_name}?</h2>
+        <p>O acesso como juiz será retirado desta organização e as designações futuras serão desativadas. Notas, votos e registros de eventos encerrados serão preservados. Outros papéis que a pessoa possuir não serão removidos.</p>
+        {error && <div className="form-error" role="alert">{error}</div>}
+        <div className="modal-actions"><button className="secondary" disabled={!!working} onClick={() => setRevokeTarget(null)}>Cancelar</button><button className="primary" disabled={!!working} onClick={() => void revoke(revokeTarget)}>{working ? "Removendo..." : "Remover acesso de juiz"}</button></div>
+      </section></div>}
     </section>
   );
 }

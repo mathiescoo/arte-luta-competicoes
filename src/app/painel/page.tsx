@@ -23,7 +23,7 @@ export default async function PainelPage() {
 
   const { data: events } = await supabase
     .from("events")
-    .select("id,name,edition,city,venue,status,starts_at,created_at,competitions(id,categories(id)),rings(id,name,status)")
+    .select("id,name,edition,city,venue,status,starts_at,created_at,competitions(id,model,categories(id)),rings(id,name,status)")
     .eq("organization_id", managerRole.organization_id)
     .order("starts_at", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });

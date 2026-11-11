@@ -210,7 +210,7 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
       setManagerLoading(false);
       return;
     }
-    const nextEvents = (data || []) as ManageableEvent[];
+    const nextEvents = ((data || []) as ManageableEvent[]).filter((event) => !["finished", "archived"].includes(event.status));
     setEvents(nextEvents);
     const nextEventId = nextEvents.some((event) => event.id === selectedEventId)
       ? selectedEventId
@@ -574,7 +574,7 @@ export default function ScoringWorkspace({ canManage, canJudge }: { canManage: b
           {managerLoading ? (
             <div className={styles.loading}><LoaderCircle /> Carregando configuração de notas…</div>
           ) : !events.length ? (
-            <div className={styles.empty}><Music2 /><h3>Nenhum Cante Comigo disponível</h3><p>Crie um evento e selecione a competição Cante Comigo Capoeira Intérpretes.</p></div>
+            <div className={styles.empty}><Music2 /><h3>Nenhuma avaliação por notas disponível</h3><p>Crie um evento e selecione uma competição de apresentações por notas.</p></div>
           ) : !workspace?.competitions.length ? (
             <div className={styles.empty}><Music2 /><h3>Nenhuma competição por notas</h3><p>Este evento não possui uma competição configurada com somatório de notas.</p></div>
           ) : (

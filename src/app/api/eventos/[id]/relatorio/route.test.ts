@@ -41,14 +41,26 @@ describe("proteção e recuperação do relatório de encerramento", () => {
     expect(mocks.rpc).toHaveBeenCalledTimes(1);
   });
 
-  it("baixa o PDF já salvo sem gerar ou encerrar novamente", async () => {
+  it("preserva o PDF original e permite baixá-lo sem substituição", async () => {
     mocks.rpc.mockResolvedValue({ data: { snapshot: {}, pdf_base64: pdf.toString("base64") }, error: null });
-    const response = await GET(new Request(url), context);
+    const response = await GET(new Request(`${url}?original=1`), context);
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toBe("application/pdf");
     expect(response.headers.get("cache-control")).toBe("private, no-store");
     expect(Buffer.from(await response.arrayBuffer())).toEqual(pdf);
     expect(mocks.makePdf).not.toHaveBeenCalled();
+    expect(mocks.rpc).toHaveBeenCalledTimes(1);
+  });
+
+  it("gera uma versão organizada a partir do histórico sem alterar o PDF original", async () => {
+    const snapshot = { event: { name: "Teste" } };
+    const updatedPdf = Buffer.from("%PDF-1.7\nVersão organizada");
+    mocks.rpc.mockResolvedValue({ data: { snapshot, pdf_base64: pdf.toString("base64") }, error: null });
+    mocks.makePdf.mockResolvedValue(updatedPdf);
+    const response = await GET(new Request(url), context);
+    expect(response.status).toBe(200);
+    expect(Buffer.from(await response.arrayBuffer())).toEqual(updatedPdf);
+    expect(mocks.makePdf).toHaveBeenCalledWith(snapshot);
     expect(mocks.rpc).toHaveBeenCalledTimes(1);
   });
 
@@ -75,6 +87,7 @@ describe("proteção e recuperação do relatório de encerramento", () => {
   it("encerra antes de disponibilizar o relatório", async () => {
     mocks.rpc.mockResolvedValueOnce({ error: null })
       .mockResolvedValueOnce({ data: { snapshot: {}, pdf_base64: pdf.toString("base64") }, error: null });
+    mocks.makePdf.mockResolvedValue(pdf);
     const response = await POST(new Request(url, { method: "POST", headers: validHeaders }), context);
     expect(response.status).toBe(200);
     expect(mocks.rpc).toHaveBeenNthCalledWith(1, "finalize_event_and_snapshot", { target_event: id });

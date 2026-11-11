@@ -12,6 +12,8 @@
 .public-registration-form fieldset:disabled,.registration-form-fields:disabled{opacity:.7}
 .registration-link{width:100%;min-width:0;margin:10px 0;padding:12px;border:1px solid var(--line);border-radius:6px;background:#fff;font:14px Arial,sans-serif}
 .event-closed-notice{padding:16px;margin:16px 0;border:1px solid #a5c9b3;border-radius:8px;background:#eef7f1;line-height:1.6}
+.event-history{margin:36px 0;padding:18px 20px;background:#f2f4f0;border:1px solid var(--line);border-radius:10px}.event-history summary{cursor:pointer;font-weight:700;color:#3d5143}.event-history p{color:#59645d;line-height:1.6}.event-history .management-list{margin-top:16px}
+.event-history details{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}.event-history li{line-height:1.6;overflow-wrap:anywhere}.hero-buttons{flex-wrap:wrap}
 .help-note{max-width:none}
 .help-grid p{min-height:0;font-size:14px;line-height:1.6}
 .help-grid h2{line-height:1.3}

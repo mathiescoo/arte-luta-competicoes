@@ -13,7 +13,7 @@ Plataforma para operação de campeonatos da Arena Arte Luta: eventos, categoria
 
 O deploy da Vercel **não executa SQL**. No Supabase, abra **SQL Editor** e execute, na ordem numérica, todas as migrations de:
 
-`supabase/migrations/001_initial.sql` até `supabase/migrations/033_event_closure_reports.sql` em uma instalação nova. Em produção, aplique somente as migrations pendentes; não repita todas as migrations em uma base com dados.
+`supabase/migrations/001_initial.sql` até `supabase/migrations/035_event_financial_snapshot.sql` em uma instalação nova. Em produção, aplique somente as migrations pendentes; não repita todas as migrations em uma base com dados. As migrations `034` e `035` acrescentam, respectivamente, o gerenciamento seguro de juízes/telões encerrados e o registro financeiro opcional.
 
 Em especial, as migrations `013` a `018` são necessárias para login de juízes, gestão de acessos, criação de eventos, votação segura e Cante Comigo.
 
@@ -48,7 +48,8 @@ Todas devem retornar o nome da função, nunca `null`.
 8. Confira a classificação em **Resultados** e publique apenas depois de homologar todos os inscritos.
 9. Em **Telões ao vivo**, crie uma sessão da modalidade correta e abra o link público no monitor. Para musicalidade, não é necessário criar rodas. Abra a apresentação para chamar o participante e inicie o cronômetro apenas quando ele começar a cantar.
 10. Na página do evento, configure e salve o formulário público. Ative o link e defina o status como **Inscrições abertas**. O formulário exibe as músicas escolhidas e impede uma música repetida nas novas inscrições pelo link.
-11. Depois de resolver todas as apresentações e confrontos pendentes, use **Finalizar evento e gerar PDF**. O encerramento é definitivo e o relatório fica disponível para baixar novamente.
+11. Se desejar, registre as receitas, despesas e observações financeiras em **Configurações** do evento. São valores manuais, não cobranças automáticas; deixe em branco os valores desconhecidos.
+12. Depois de resolver todas as apresentações e confrontos pendentes, use **Finalizar evento e gerar PDF**. O encerramento é definitivo; ele desativa os telões do evento e preserva os registros. Em **Eventos → Eventos já realizados**, consulte o histórico e baixe o PDF organizado ou o PDF original.
 
 ## Regras de segurança aplicadas
 
@@ -80,5 +81,6 @@ O aplicativo depende de internet para salvar dados e atualizar os outros disposi
 - `npm run lint` e `npm run build`: validação de código, tipos e compilação para produção.
 - `npm audit` e `npm audit --omit=dev`: auditoria de dependências completa e somente de produção.
 - `supabase/validar_032_033.sql`: teste transacional de inscrições e encerramento, com `ROLLBACK` no fim. Não troque por `COMMIT`: o teste contém dados temporários.
+- `supabase/validar_034.sql` e `supabase/validar_035.sql`: testes transacionais de escala, remoção de acesso, telões e resumo financeiro; também terminam em `ROLLBACK`.
 
 Os testes automatizados não substituem um ensaio autenticado no evento de teste com organização, juiz e telão em dispositivos diferentes.

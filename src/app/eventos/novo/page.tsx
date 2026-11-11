@@ -9,7 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 const choices = [
   { id: "internal", name: "Campeonato Interno", description: "Confrontos por bandeiras digitais, chaves e rodas.", icon: Shield },
   { id: "mirim", name: "Festival Mirim", description: "Festival infantil com categorias e premiações próprias.", icon: Sparkles },
-  { id: "musicality", name: "Cante Comigo Capoeira Intérpretes", description: "Apresentações avaliadas por somatório de notas.", icon: Music2 },
+  { id: "musicality", name: "Cante Comigo Capoeira Intérpretes", description: "Apresentações avaliadas por média de notas de 0 a 10.", icon: Music2 },
 ] as const;
 
 export default function NovoEventoPage() {

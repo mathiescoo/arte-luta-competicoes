@@ -31,7 +31,7 @@ export default async function CheckinPage() {
   let eventsQuery = supabase
     .from("events")
     .select("id,name,settings")
-    .neq("status", "archived")
+    .not("status", "in", "(finished,archived)")
     .order("created_at", { ascending: false });
   eventsQuery = managerRole
     ? eventsQuery.eq("organization_id", managerRole.organization_id)
