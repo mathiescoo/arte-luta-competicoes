@@ -13,7 +13,7 @@ Plataforma para operação de campeonatos da Arena Arte Luta: eventos, categoria
 
 O deploy da Vercel **não executa SQL**. No Supabase, abra **SQL Editor** e execute, na ordem numérica, todas as migrations de:
 
-`supabase/migrations/001_initial.sql` até `supabase/migrations/035_event_financial_snapshot.sql` em uma instalação nova. Em produção, aplique somente as migrations pendentes; não repita todas as migrations em uma base com dados. As migrations `034` e `035` acrescentam, respectivamente, o gerenciamento seguro de juízes/telões encerrados e o registro financeiro opcional.
+`supabase/migrations/001_initial.sql` até `supabase/migrations/036_prevent_repeated_event_songs.sql` em uma instalação nova. Em produção, aplique somente as migrations pendentes; não repita todas as migrations em uma base com dados. As migrations `034`, `035` e `036` acrescentam, respectivamente, o gerenciamento seguro de juízes/telões encerrados, o registro financeiro opcional e a proteção contra músicas repetidas no mesmo evento.
 
 Em especial, as migrations `013` a `018` são necessárias para login de juízes, gestão de acessos, criação de eventos, votação segura e Cante Comigo.
 

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Download, FileUp, X } from "lucide-react";
 import { strFromU8, unzipSync } from "fflate";
 import { createClient } from "@/lib/supabase/client";
+import { songKey } from "@/lib/song-key";
 
 type EventItem = {
   id: string;
@@ -13,11 +14,12 @@ type EventItem = {
   competitions: Array<{
     id: string;
     name: string;
+    model: string;
     categories: Array<{ id: string; name: string }>;
   }>;
 };
 
-type CategoryOption = { id: string; name: string; competition: string };
+type CategoryOption = { id: string; name: string; competition: string; model: string };
 type ImportRow = Record<string, string>;
 type StoredParticipant = { id: string; full_name: string; private_data: Record<string, unknown> | null };
 
@@ -222,7 +224,7 @@ export default function CsvImporter({ organizationId, events }: { organizationId
   const event = events.find((item) => item.id === eventId);
   const categories = useMemo(
     () => event?.competitions.flatMap((competition) =>
-      competition.categories.map((category) => ({ ...category, competition: competition.name })),
+      competition.categories.map((category) => ({ ...category, competition: competition.name, model: competition.model })),
     ) || [],
     [event],
   );
@@ -230,7 +232,7 @@ export default function CsvImporter({ organizationId, events }: { organizationId
   async function importFile(eventChange: ChangeEvent<HTMLInputElement>) {
     const file = eventChange.target.files?.[0];
     if (!file || !eventId) return;
-    if (event?.status === "finished") {
+    if (["finished", "archived"].includes(event?.status || "")) {
       setError("Este evento está finalizado e não recebe novas inscrições.");
       eventChange.target.value = "";
       return;
@@ -296,8 +298,22 @@ export default function CsvImporter({ organizationId, events }: { organizationId
       }
     });
 
+    const musicCategoryIds = categories.filter((category) => category.model === "sum_score").map((category) => category.id);
+    const { data: savedSongs, error: songsError } = musicCategoryIds.length
+      ? await supabase.from("registrations").select("participant_id,category_id,data").eq("event_id", eventId).in("category_id", musicCategoryIds)
+      : { data: [], error: null };
+    if (songsError) {
+      setError("Não foi possível conferir as músicas já escolhidas neste evento. Tente novamente antes de importar.");
+      setLoading(false); eventChange.target.value = ""; return;
+    }
+    const takenSongs = (savedSongs || []).flatMap((item) => {
+      const key = songKey(item.data?.song_title);
+      return key ? [{ key, participantId: item.participant_id, categoryId: item.category_id }] : [];
+    });
+
     let imported = 0;
     let duplicates = 0;
+    let repeatedSongs = 0;
     let failed = 0;
     let unmatchedCategories = 0;
     const seen = new Set<string>();
@@ -323,6 +339,11 @@ export default function CsvImporter({ organizationId, events }: { organizationId
       seen.add(identity);
 
       const knownParticipant = participantsByName.get(normalize(row.fullName));
+      const candidateSong = targetCategory.model === "sum_score" ? songKey(row.songTitle) : "";
+      if (candidateSong && takenSongs.some((item) => item.key === candidateSong && !(knownParticipant && item.participantId === knownParticipant.id && item.categoryId === targetCategory.id))) {
+        repeatedSongs += 1;
+        continue;
+      }
       let participantId = knownParticipant?.id || "";
       const privateData = mergeDetails(knownParticipant?.private_data || null, { phone: row.phone, teacher: row.teacher });
 
@@ -369,13 +390,21 @@ export default function CsvImporter({ organizationId, events }: { organizationId
           },
         }, { onConflict: "event_id,participant_id,category_id" });
 
-      if (registrationError) failed += 1;
-      else imported += 1;
+      if (registrationError) {
+        if (/song already selected/i.test(registrationError.message)) repeatedSongs += 1;
+        else failed += 1;
+      } else {
+        imported += 1;
+        const previous = takenSongs.findIndex((item) => item.participantId === participantId && item.categoryId === targetCategory.id);
+        if (previous >= 0) takenSongs.splice(previous, 1);
+        if (candidateSong) takenSongs.push({ key: candidateSong, participantId, categoryId: targetCategory.id });
+      }
     }
 
     const details = [
       `${imported} inscrição(ões) importada(s) ou atualizada(s)`,
       duplicates ? `${duplicates} duplicada(s) ignorada(s)` : "",
+      repeatedSongs ? `${repeatedSongs} com música já escolhida neste evento` : "",
       unmatchedCategories ? `${unmatchedCategories} com categoria não encontrada` : "",
       failed ? `${failed} linha(s) com erro` : "",
     ].filter(Boolean);

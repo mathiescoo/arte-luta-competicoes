@@ -4,9 +4,10 @@ import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, ArrowRightLeft, Pencil, Plus, Search, Trash2, UserRound, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { songKey } from "@/lib/song-key";
 
 type Category = { id: string; name: string };
-type Competition = { id: string; name: string; categories: Category[] };
+type Competition = { id: string; name: string; model: string; categories: Category[] };
 type EventItem = { id: string; name: string; status: string; competitions: Competition[] };
 
 type Registration = {
@@ -24,6 +25,7 @@ type Participant = {
   birth_date: string | null;
   private_data: Record<string, unknown>;
   registrations: Registration[];
+  total_registration_count: number;
 };
 
 type RegistrationDetails = {
@@ -113,6 +115,7 @@ export default function ParticipantManager({
   const [participants, setParticipants] = useState(initialParticipants);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [eventId, setEventId] = useState(() => initialEvents.find((event) =>
     initialParticipants.some((participant) => participant.registrations.some((registration) => registration.event_id === event.id)),
   )?.id || initialEvents[0]?.id || "");
@@ -132,8 +135,13 @@ export default function ParticipantManager({
 
   const event = initialEvents.find((item) => item.id === eventId);
   const categories = event?.competitions.flatMap((competition) =>
-    competition.categories.map((category) => ({ ...category, competition: competition.name })),
+    competition.categories.map((category) => ({ ...category, competition: competition.name, model: competition.model })),
   ) || [];
+  const musicCategoryIds = categories.filter((category) => category.model === "sum_score").map((category) => category.id);
+  const isMusicCategory = categories.some((category) => category.id === selectedCategoryId && category.model === "sum_score");
+  const chosenSongs = [...new Set(participants.flatMap((participant) => participant.registrations
+    .filter((registration) => registration.event_id === eventId && musicCategoryIds.includes(registration.category_id))
+    .map((registration) => String(registration.data?.song_title || "").trim()).filter(Boolean)))];
   const eventParticipants = useMemo(() => participants
     .map((participant) => ({
       ...participant,
@@ -156,7 +164,7 @@ export default function ParticipantManager({
   const managedRegistration = managedParticipant?.registrations.find((registration) => registration.id === managedRegistrationId);
   const managedDetails = managedRegistration ? detailsFor(managedRegistration, initialEvents) : undefined;
   const availableCategories = managedDetails?.competition?.categories.filter((category) => category.id !== managedRegistration?.category_id) || [];
-  const managedRegistrationCount = participants.find((participant) => participant.id === managedParticipant?.id)?.registrations.length || 0;
+  const managedRegistrationCount = participants.find((participant) => participant.id === managedParticipant?.id)?.total_registration_count || 0;
 
   function closeManager() {
     setManagedParticipant(null);
@@ -178,6 +186,7 @@ export default function ParticipantManager({
 
   function changeEvent(nextEventId: string) {
     setEventId(nextEventId);
+    setSelectedCategoryId("");
     setSelectedParticipantIds(new Set());
     setBulkDeleteOpen(false);
     setBulkDeleteError("");
@@ -214,7 +223,7 @@ export default function ParticipantManager({
       setLoading(false);
       return;
     }
-    if (initialEvents.find((item) => item.id === eventId)?.status === "finished") {
+    if (["finished", "archived"].includes(initialEvents.find((item) => item.id === eventId)?.status || "")) {
       setError("Este evento está finalizado e não recebe novas inscrições.");
       setLoading(false);
       return;
@@ -239,6 +248,14 @@ export default function ParticipantManager({
     };
 
     const supabase = createClient();
+    if (isMusicCategory && songKey(songTitle)) {
+      const { data: existingSongs, error: songsError } = await supabase.from("registrations")
+        .select("data").eq("event_id", eventId).in("category_id", musicCategoryIds);
+      if (songsError) { setError("Não foi possível conferir as músicas deste evento. Tente novamente antes de cadastrar."); setLoading(false); return; }
+      if ((existingSongs || []).some((item) => songKey(item.data?.song_title) === songKey(songTitle))) {
+        setError("Esta música já foi escolhida neste evento. Selecione outra."); setLoading(false); return;
+      }
+    }
     const { data: participant, error: participantError } = await supabase
       .from("participants")
       .insert(payload)
@@ -268,14 +285,14 @@ export default function ParticipantManager({
       .single();
 
     if (registrationError || !registration) {
-      setError("Participante criado, mas não foi possível concluir a inscrição.");
+      setError(/song already selected/i.test(registrationError?.message || "") ? "Esta música já foi escolhida neste evento. A inscrição não foi concluída; escolha outra música." : "Participante criado, mas não foi possível concluir a inscrição.");
       setLoading(false);
       return;
     }
 
     setParticipants((items) => [
       ...items,
-      { ...participant, registrations: [registration] } as Participant,
+      { ...participant, registrations: [registration], total_registration_count: 1 } as Participant,
     ].sort((left, right) => left.full_name.localeCompare(right.full_name)));
     setNotice("Participante cadastrado e inscrito com sucesso.");
     setOpen(false);
@@ -333,7 +350,7 @@ export default function ParticipantManager({
     setParticipants((items) => items.flatMap((participant) => {
       if (participant.id !== managedParticipant.id) return [participant];
       const registrations = participant.registrations.filter((registration) => registration.id !== managedRegistration.id);
-      return registrations.length ? [{ ...participant, registrations }] : [];
+      return registrations.length ? [{ ...participant, registrations, total_registration_count: Math.max(0, participant.total_registration_count - 1) }] : [];
     }));
     setNotice(participantDeleted
       ? `${managedParticipant.full_name} e sua única inscrição foram excluídos.`
@@ -363,7 +380,7 @@ export default function ParticipantManager({
     setParticipants((items) => items.flatMap((participant) => {
       if (!selectedIds.has(participant.id)) return [participant];
       const registrations = participant.registrations.filter((registration) => !selectedRegistrationIdSet.has(registration.id));
-      return registrations.length ? [{ ...participant, registrations }] : [];
+      return registrations.length ? [{ ...participant, registrations, total_registration_count: Math.max(0, participant.total_registration_count - (participant.registrations.length - registrations.length)) }] : [];
     }));
     setSelectedParticipantIds(new Set());
     setBulkDeleteOpen(false);
@@ -469,9 +486,10 @@ export default function ParticipantManager({
               <label>Professor / mestre<input name="teacher" /></label>
               <label>Graduação<input name="graduation" /></label>
               <label>Evento<select value={eventId} onChange={(eventChange) => changeEvent(eventChange.target.value)}>{initialEvents.map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}</select></label>
-              <label className="wide">Categoria<select name="category_id" required><option value="">Selecione...</option>{categories.map((category) => <option value={category.id} key={category.id}>{category.competition} · {category.name}</option>)}</select></label>
+              <label className="wide">Categoria<select name="category_id" required value={selectedCategoryId} onChange={(eventChange) => setSelectedCategoryId(eventChange.target.value)}><option value="">Selecione...</option>{categories.map((category) => <option value={category.id} key={category.id}>{category.competition} · {category.name}</option>)}</select></label>
+              {isMusicCategory && <><div className="wide"><strong>Músicas já escolhidas neste evento</strong><p>{chosenSongs.length ? chosenSongs.join(" · ") : "Nenhuma música escolhida até o momento."}</p></div>
               <label className="wide">Música que vai cantar<input name="song_title" maxLength={250} placeholder="Ex.: Angola" /></label>
-              <label className="wide">Autor / intérprete da música<input name="song_author" maxLength={250} placeholder="Ex.: Mestre Pastinha" /></label>
+              <label className="wide">Autor / intérprete da música<input name="song_author" maxLength={250} placeholder="Ex.: Mestre Pastinha" /></label></>}
               <label className="wide">Observações<input name="notes" /></label>
             </div>
             {error && <div className="form-error">{error}</div>}

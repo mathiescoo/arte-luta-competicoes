@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import ParticipantManager from "./participant-manager";
 import CsvImporter from "./csv-importer";
+import { participantsForActiveEvents } from "@/lib/active-event-participants";
 
 export const dynamic = "force-dynamic";
 
@@ -20,21 +21,25 @@ export default async function ParticipantsPage() {
   const role = roles?.[0];
   if (!role) redirect("/painel");
 
-  const [{ data: events }, { data: participants }] = await Promise.all([
-    supabase
+  const { data: events, error: eventsError } = await supabase
       .from("events")
-      .select("id,name,status,competitions(id,name,categories(id,name))")
+      .select("id,name,status,competitions(id,name,model,categories(id,name))")
       .eq("organization_id", role.organization_id)
-      .order("created_at", { ascending: false }),
-    supabase
+      .not("status", "in", "(finished,archived)")
+      .order("created_at", { ascending: false });
+  if (eventsError) throw new Error("Não foi possível carregar os eventos atuais.");
+  const currentEvents = events || [];
+  const { data: participants, error: participantsError } = currentEvents.length
+    ? await supabase
       .from("participants")
       .select("id,full_name,birth_date,private_data,registrations(id,event_id,category_id,attendance_confirmed,payment_confirmed,data)")
       .eq("organization_id", role.organization_id)
-      .order("full_name"),
-  ]);
+      .order("full_name")
+    : { data: [], error: null };
+  if (participantsError) throw new Error("Não foi possível carregar os participantes.");
 
-  const participantList = participants || [];
-  const participantManagerKey = participantList.map((participant) => `${participant.id}:${participant.registrations
+  const participantList = participantsForActiveEvents(participants || [], new Set(currentEvents.map((event) => event.id)));
+  const participantManagerKey = `${currentEvents.map((event) => `${event.id}:${event.status}`).join("|")}::` + participantList.map((participant) => `${participant.id}:${participant.registrations
     .map((registration) => `${registration.id}:${registration.event_id}:${registration.category_id}:${registration.attendance_confirmed}:${registration.payment_confirmed}:${JSON.stringify(registration.data)}`)
     .join(",")}`).join("|");
 
@@ -49,11 +54,12 @@ export default async function ParticipantsPage() {
         </div>
         <Link className="primary" href="/credenciamento">Check-in do evento</Link>
       </div>
-      <div className="participant-import"><CsvImporter organizationId={role.organization_id} events={events || []} /></div>
+      {!currentEvents.length && <div className="event-closed-notice">Não há eventos atuais. As inscrições anteriores continuam preservadas em <Link href="/eventos#historico">Eventos já realizados</Link>.</div>}
+      <div className="participant-import"><CsvImporter organizationId={role.organization_id} events={currentEvents} /></div>
       <ParticipantManager
         key={participantManagerKey}
         organizationId={role.organization_id}
-        initialEvents={events || []}
+        initialEvents={currentEvents}
         initialParticipants={participantList}
       />
     </main>
