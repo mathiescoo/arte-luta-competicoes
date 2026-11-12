@@ -82,5 +82,6 @@ O aplicativo depende de internet para salvar dados e atualizar os outros disposi
 - `npm audit` e `npm audit --omit=dev`: auditoria de dependências completa e somente de produção.
 - `supabase/validar_032_033.sql`: teste transacional de inscrições e encerramento, com `ROLLBACK` no fim. Não troque por `COMMIT`: o teste contém dados temporários.
 - `supabase/validar_034.sql` e `supabase/validar_035.sql`: testes transacionais de escala, remoção de acesso, telões e resumo financeiro; também terminam em `ROLLBACK`.
+- `supabase/aplicar_037.sql`: remove automaticamente o acesso operacional de juízes ao finalizar um evento e limpa permissões que restaram de eventos já encerrados. Execute no SQL Editor do Supabase; contas/perfis ficam preservados somente para manter a autoria das notas, votos e relatórios históricos. O acesso de administrador não é alterado.
 
 Os testes automatizados não substituem um ensaio autenticado no evento de teste com organização, juiz e telão em dispositivos diferentes.
